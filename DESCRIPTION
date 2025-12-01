@@ -1,11 +1,40 @@
 Package: SMiXcanK
-Title: What the Package Does (One Line, Title Case)
-Version: 0.0.0.9000
+Type: Package
+Title: Multi-Cell-Type Extension of MiXcan for Cell-Type-Aware TWAS
+Version: 0.1.0
 Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
+    c(person(given = "Sinan",
+             family = "Zhu",
+             role = c("aut", "cre"),
+             email = "your_email@example.com"),
+      person(given = "Xiaoyu",
+             family = "Song",
+             role = "ths"))
+Description: 
+    SMiXcanK provides a multi-cell-type-aware transcriptome-wide association studies (TWAS). 
+    The package integrates bulk expression data with estimated cell-type 
+    proportions, enabling the decomposition of genetic effects into shared and 
+    cell-type-specific components across K cell types.  
+    It includes tools for estimating cell-type fractions, and performing cell-type-resolved association analysis. 
+    The methodology extends MiXcan to allow simultaneous modeling of multiple 
+    biological cell types, improving interpretability and statistical power in 
+    TWAS of complex tissues.
+License: GPL-3
 Encoding: UTF-8
+LazyData: true
+Depends: R (>= 4.0)
+Imports:
+    BayesDeBulk,
+    glmnet,
+    tibble,
+    dplyr,
+    magrittr,
+    ACAT,
+    foreach
+Suggests:
+    devtools,
+    roxygen2,
+    knitr,
+    rmarkdown
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2

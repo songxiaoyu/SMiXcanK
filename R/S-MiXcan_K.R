@@ -19,7 +19,7 @@ regularized_inverse_cov <- function(X) {
 
   r <- abs(cor(X))
   lambda = 0.001 * abs(r)^6
-  # Apply regularization if lambda > 0
+  # Apply regularization if lambda> 0
   X_cor <- cov2cor(X)
   X_reg <- X_cor + lambda * diag(nrow(X))
   X_cor_inv <- solve(X_reg)
@@ -36,10 +36,12 @@ regularized_inverse_cov <- function(X) {
 #'
 #' Performs the S-MiXcan association test using GWAS summary statistics and reference genotype data,
 #' applying shrinkage-based regularization to stabilize inverse covariance estimation.
+#' @name SMiXcan_assoc_test_K
+#' @title  S-MiXcan Association Test in K cell types
 #'
 #' @param W A p-by-k matrix of cell-type level weights  (where p is the number of SNPs in the gene region, k is the number of cell types).
 #' @param gwas_results A list containing GWAS summary statistics, with components \code{Beta} and \code{se_Beta}.
-#' @param x_g A genotype matrix for the reference panel (individuals × SNPs).
+#' @param x_g A genotype matrix for the reference panel (individuals \times SNPs).
 #' @param n0 Number of controls.
 #' @param n1 Number of cases.
 #' @param family Either \code{"binomial"} or \code{"gaussian"} (used for fitting the null model).
@@ -65,7 +67,7 @@ SMiXcan_assoc_test_K <- function(W,
   se_Beta <- as.numeric(gwas_results$se_Beta)
 
   if (!is.matrix(W))
-    stop("W must be a numeric matrix of dimension p × K.")
+    stop("W must be a numeric matrix of dimension p * K.")
 
   p <- nrow(W)
   K <- ncol(W)
@@ -77,7 +79,7 @@ SMiXcan_assoc_test_K <- function(W,
     stop("Length of Beta and se_Beta must match nrow(W).")
 
   # ---- LD and SNP variances ----
-  cov_x <- stats::var(x_g)           # p × p LD (covariance) matrix
+  cov_x <- stats::var(x_g)           # p * p LD (covariance) matrix
   sig_l <- sqrt(diag(cov_x))         # per-SNP SD
 
   # ---- Separate-component Z for each cell type ----
@@ -113,18 +115,18 @@ SMiXcan_assoc_test_K <- function(W,
     Z0    <- coef0["(Intercept)", "z value"]
 
     # 2. Predicted expression for each cell type
-    Yhat <- x_g %*% W             # n × K
+    Yhat <- x_g %*% W             # n * K
     Y_scaled <- scale(Yhat)       # standardize columns
     Y <- cbind(1, Y_scaled)       # [Intercept, cell-type 1..K]
     colnames(Y) <- c("Y0", paste0("Y", seq_len(K)))
 
-    YtY   <- crossprod(Y)         # (K+1) × (K+1)
+    YtY   <- crossprod(Y)         # (K+1) * (K+1)
     Omega <- diag(YtY)
 
     # Correlation matrix on the Y scale
     corY <- stats::cov2cor(YtY)
 
-    # Near-singularity check: any |cor| > threshold?
+    # Near-singularity check: any cor > threshold
     if (!any(is.na(corY)) &&
         !any(abs(corY[upper.tri(corY)]) > 0.999999)) {
 
@@ -143,10 +145,10 @@ SMiXcan_assoc_test_K <- function(W,
   } else if (family == "gaussian") {
     # Gaussian joint step uses only cell-type components (no intercept)
     Yhat <- x_g %*% W
-    Y_scaled <- scale(Yhat)             # n × K
+    Y_scaled <- scale(Yhat)             # n * K
     colnames(Y_scaled) <- paste0("Y", seq_len(K))
 
-    YtY   <- crossprod(Y_scaled)        # K × K
+    YtY   <- crossprod(Y_scaled)        # K * K
     Omega <- diag(YtY)
     corY  <- stats::cov2cor(YtY)
 
