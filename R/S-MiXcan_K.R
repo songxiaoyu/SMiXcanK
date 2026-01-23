@@ -18,7 +18,11 @@
 regularized_inverse_cov <- function(X) {
 
   r <- abs(cor(X))
-  lambda = 0.001 * abs(r)^6
+  #lambda = 0.001 * abs(r)^6
+  lambda = 0.1 * abs(r)^2
+  #lambda = 0.01 * abs(r)^2
+  #lambda = 0.005 * abs(r)^3
+  #lambda = 0.1 * abs(r)^3
   # Apply regularization if lambda> 0
   X_cor <- cov2cor(X)
   X_reg <- X_cor + lambda * diag(nrow(X))
@@ -174,7 +178,7 @@ SMiXcan_assoc_test_K <- function(W,
   list(
     Z_join    = Z_join,
     p_join_vec = p_join_vec,
-    p_join    = p_join,
+    p_join    = p_join
   )
 }
 

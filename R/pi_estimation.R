@@ -32,13 +32,10 @@ pi_estimation_K <- function(exprB,
                             n.iter = 10000,
                             burn.in = 1000,
                             ...) {
-
-
   cell.type<-names(markers)
   index.matrix<-NULL
   for (s in 1:length(cell.type)){
     for (k in 1:length(cell.type)){
-
       if (s!=k){
         mg<-match(markers[[s]],markers[[k]])
         index.matrix<-rbind(index.matrix,cbind(rep(cell.type[s],sum(is.na(mg))),

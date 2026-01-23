@@ -11,6 +11,7 @@ library(janitor)
 library(tibble)
 library(doParallel)
 library(dplyr)
+library(SMiXcanK)
 # Set working path
 setwd("/Users/zhusinan/Downloads/S-MiXcan_code_folder/code_RealData/RealData/GTEx_Data")
 # Step 1: Load data---------------------
@@ -36,9 +37,10 @@ dim(exprB)
 
 # 4. load pi estimation results
 pis<- read.csv("/Users/zhusinan/Library/CloudStorage/Dropbox/Paper_SMiXcan/Data/BayesDeBulk_3CT_GTEx/BayesDeBulk_pi_3ct_GTEx.tsv",
-                     sep = "\t", header = TRUE)
+               sep = "\t", header = TRUE)
 
-#pis_old <- read_csv("pi_GTEx.csv") %>% as.data.frame()
+pis_new <- pis[, c('SampleID','Epi')]
+pis_new$Other <- 1- pis_new$Epi
 # 5. load GTEx covariate data
 
 cov1=data.frame(fread("phs000424.v8.pht002742.v8.p2.c1.GTEx_Subject_Phenotypes.GRU.txt"))
@@ -98,7 +100,7 @@ for (j in 1:G){
   yData=t(exprB[which(rownames(exprB)==yName), match(nName, colnames(exprB))])
   xData=t(geno[match(xName, geno$ID), match(nName, colnames(geno)), with=F])
   zData=cov[match(nName, cov$SUBJID),-1]; zData=zData[,-ncol(zData)]
-  piData=pis[match(nName, pis$SampleID),2:4]
+  piData=pis_new[match(nName, pis_new$SampleID),2:3]
 
   class(xData)<-"numeric"
   # Ignore NaN
@@ -142,13 +144,12 @@ for (j in 1:G){
       cov = z.complete,
       xNameMatrix = xName.all[xvar0,],
       foldid = foldid,
-      alpha = 0.2
+      alpha = 0.5
     )
     w1 <- ft.sym$beta.SNP.by.cell$Cell1
     w2 <- ft.sym$beta.SNP.by.cell$Cell2
-    w3 <- ft.sym$beta.SNP.by.cell$Cell3
-    w <- cbind(w1, w2$weight, w3$weight)
-    colnames(w)[6:8] <- c('weight_cell_1', 'weight_cell_2', 'weight_cell_3')
+    w <- cbind(w1, w2$weight)
+    colnames(w)[6:7] <- c('weight_cell_1', 'weight_cell_2')
     w$type = ft.sym$type
     if (nrow(w)) res_weights_all[[j]] <- w
   }, error = function(e) {
@@ -162,9 +163,6 @@ for (j in 1:G){
       beta.all.models = NULL
     ))
   })
-  # ft.sym = MiXcan_train_K_symmetric_ROBUST(y=y.complete, x=x.complete, pi_k=pi.complete,cov=z.complete, xNameMatrix=xName.all[xvar0,], foldid=foldid)
-  # MiXcan::MiXcan(y=y.complete, x=x.complete, pi=pi.complete,cov=z.complete, xNameMatrix=xName.all[xvar0,], foldid=foldid)
-  # combine weights for both cells on the same SNP rows
 
   if (j %% 200 == 0) cat("Processed", j, "genes\n")
 }
@@ -172,11 +170,10 @@ for (j in 1:G){
 #  bind & save after loop
 weights_final <- bind_rows(res_weights_all)
 filtered_weights <- weights_final[
-  weights_final$weight_cell_1 != 0 | weights_final$weight_cell_2 != 0 | weights_final$weight_cell_3 != 0,
+  weights_final$weight_cell_1 != 0 | weights_final$weight_cell_2 != 0,
 ]
-write_csv(filtered_weights, "weights_miXcan_full_pi3_alpha02.csv")
-
-#
+write_csv(filtered_weights, "weights_miXcan_full_pi2.csv")
+pi3 <- read_csv('weights_miXcan_full_pi3.csv')
 print(dim(weights_final))
 head(weights_final, 10)
 

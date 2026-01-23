@@ -14,10 +14,12 @@ library(MASS)
 library(SMiXcanK)
 
 # STEP1: load data--------
-setwd('/Users/zhusinan/Downloads/S-MiXcan_code_folder/3pi')
+setwd('/Users/zhusinan/Downloads/S-MiXcan_code_folder/2pi')
 
 n1 <- 133384
+# n1<- 106278
 n0 <- 113789 + 18908
+# n0 <- 91477
 
 SMiXcan_assoc_test_K <- function(W,
                                  gwas_results,
@@ -145,17 +147,17 @@ SMiXcan_assoc_test_K <- function(W,
 
 
 # Set chromosome
-for(chr in 1:22){
+for(chr in 2:22){
   print('CHR')
   print(chr)
   # Load pre-merged data
-  mw_gwas_input_path <- file.path(sprintf("baca2020_input/chr%d_mw_gwas_input_bcac2020_oct.rds", chr))
+  mw_gwas_input_path <- file.path(sprintf("bcac2020_input/chr%d_mw_gwas_input_bcac2020_pi2.rds", chr))
   mw_gwas_input <- readRDS(mw_gwas_input_path)
 
   # Load LD matrix, ref genome, SNP info
   LD_input_dir <- 'bcac2020_filtered_id/'
-  LD_snp_path <- file.path(LD_input_dir,sprintf("filtered_chr%d_hg38_pi3.bim", chr))
-  X_ref_path <- file.path(LD_input_dir,sprintf("filtered_chr%d_hg38_012_pi3.raw", chr))
+  LD_snp_path <- file.path(LD_input_dir,sprintf("filtered_chr%d_hg38_pi2.bim", chr))
+  X_ref_path <- file.path(LD_input_dir,sprintf("filtered_chr%d_hg38_012_pi2.raw", chr))
 
   ld_snp <- fread(LD_snp_path, header = FALSE)
   ref_snp_id <- ld_snp$V2
@@ -177,7 +179,6 @@ for(chr in 1:22){
     gene_df <- split_df[[gene]]
     W1 <- gene_df$weight_cell_1
     W2 <- gene_df$weight_cell_2
-    W3 <- gene_df$weight_cell_3
     W <- cbind(W1, W2, W3)
     filtered_list[[gene]] <- list(W = W, selected_snp = gene_df)
   }
@@ -185,8 +186,8 @@ for(chr in 1:22){
 
   # STEP2 Run S-MiXcan----
   G <- length(filtered_list)
-  real_result = data.frame(matrix(ncol = 12, nrow = G))
-  colnames(real_result) <- c('gene_name','gene_id','chr','type','input_snp_num','Z_1','p_1','Z_2','p_2','Z_3','p_3','p_join')
+  real_result = data.frame(matrix(ncol = 10, nrow = G))
+  colnames(real_result) <- c('gene_name','gene_id','chr','type','input_snp_num','Z_1','p_1','Z_2','p_2','p_join')
   real_result$chr <- chr
 
   for (g in 1:G) {
@@ -202,34 +203,33 @@ for(chr in 1:22){
     X_ref_filtered <- X_ref[, selected_snp_id, drop = FALSE]
     S_MiXcan_results <- SMiXcan_assoc_test_K(W, gwas_results, X_ref_filtered, n0=n0, n1=n1, family='binomial')
     real_result[g, c('gene_name','gene_id','chr', 'type', 'input_snp_num')] =c(filtered_list[[gene]]$selected_snp[1,c('gene','varID','CHR','type')], nrow(W))
-    real_result[g, c('Z_1','p_1','Z_2','p_2','Z_3','p_3','p_join')] <- c(c(rbind(S_MiXcan_results$Z_join, S_MiXcan_results$p_join_vec)), S_MiXcan_results$p_join)
+    real_result[g, c('Z_1','p_1','Z_2','p_2','p_join')] <- c(c(rbind(S_MiXcan_results$Z_join, S_MiXcan_results$p_join_vec)), S_MiXcan_results$p_join)
   }
 
-  result_path <- file.path('bcac2020_result',sprintf("bcac2020_chr%d_result_pi3_02.csv", chr))
+  result_path <- file.path('bcac2020_result',sprintf("bcac2020_chr%d_result_pi2.csv", chr))
   write.csv(real_result, result_path, row.names = FALSE)
 }
 
-combined3 <- do.call(rbind, lapply(1:22, function(chr) {
+combined <- do.call(rbind, lapply(1:22, function(chr) {
   result_path <- file.path("bcac2020_result",
-                           sprintf("bcac2020_chr%d_result_pi3_02.csv", chr))
+                           sprintf("bcac2020_chr%d_result_pi2.csv", chr))
   read.csv(result_path)
 }))
-
-combined_path <- file.path('bcac2020_result','bcac2020_result_pi3_02.csv')
-write.csv(combined3, combined_path, row.names = FALSE)
-
-gene3 = combined3$gene_name[which(combined3$p_join < 0.05)]
-length(gene3)
-gene2 = combined$gene_name[which(combined$p_join < 0.05)]
-length(gene2)
-length(intersect(gene3, gene2))
-
+combined_path <- file.path('bcac2020_result','bcac2020_result_pi2.csv')
+write.csv(combined, combined_path, row.names = FALSE)
 # Extract p-values
 pvals <- real_result$p_join
-pvals <- combined3$p_join
+pvals <- combined$p_join
+#n=6000
+#pvals=matrix(runif(3*n, 0,1), ncol=3) # change to your p-values from cell type 1, 2, 3
 
+pvals = combined[,c('p_1','p_2','p_3')]
+library("Primo")
+#Primo_pval(pvals=pvals, alt_props=c(0.005, 0.005, 0.005))
 
 library(bacon)
+merged_1 <- merged[which(merged$type_ct2 == 'CellTypeSpecific')]
+pvals <- merged$p_1_ct2[which(merged_1$p_2_ct2 < 0.01)]
 
 # keep p strictly in (0,1) to avoid Inf
 p <- pmin(pmax(pvals, .Machine$double.eps), 1 - .Machine$double.eps)
@@ -239,11 +239,13 @@ y <- qnorm(1-p, lower.tail = FALSE)
 # run bacon, excluding any non-finite values
 bc <- bacon(y, na.exclude = TRUE)
 
+pvals <- pval(bc)
 # inspect bias and inflation (λ)
 estimates(bc)      # bias and inflation
 lambda <- inflation(bc)      # same λ
-
 lambda
+
+pvals <- merged$p_1_ct2
 # Expected vs Observed
 expected <- -log10(ppoints(length(pvals)))
 observed <- -log10(sort(pvals))
@@ -259,7 +261,7 @@ observed <- -log10(sort(pvals))
 plot(expected, observed,
      xlab=expression(Expected~~-log[10](italic(p))),
      ylab=expression(Observed~~-log[10](italic(p))),
-     main="QQ Plot of SMiXcan_K in 3 cell types",
+     main="QQ Plot of SMiXcan_K in 2 cell types",
      pch=19, cex=0.6, col="blue", las=1)
 abline(0, 1, col="red", lwd=2, lty=2)
 
