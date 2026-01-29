@@ -30,7 +30,8 @@ Imports:
     dplyr,
     magrittr,
     ACAT,
-    foreach
+    foreach,
+    Primo
 Suggests:
     devtools,
     roxygen2,

@@ -11,13 +11,14 @@ library(Primo)
 # 专门用于手工画圆的包 (如果没有请安装: install.packages("ggforce"))
 library(ggforce)
 
-my_theme <- theme_minimal(base_size = 12) +
+my_theme <- theme_void(base_size = 12) +
   theme(
     plot.title = element_text(face = "bold", size = 16),
     axis.title = element_text(face = "bold"),
     panel.grid.minor = element_blank()
   )
 
+m
 # ==============================================================================
 # 1. Load Data (Please update paths!)
 # ==============================================================================
@@ -34,7 +35,7 @@ df_c <- drive %>%
   mutate(logp_p_m = -log10(p_m), logp_p_s = -log10(p_s))
 
 cor_val <- cor(df_c$logp_p_m, df_c$logp_p_s, method = "pearson")
-cor_label <- paste0("Pearson's r = ", round(cor_val, 2))
+cor_label <- paste0("r = ", round(cor_val, 2))
 axis_limit <- max(c(df_c$logp_p_m, df_c$logp_p_s)) * 1.05
 
 plot_a <- ggplot(df_c, aes(x = logp_p_m, y = logp_p_s)) +
@@ -43,8 +44,28 @@ plot_a <- ggplot(df_c, aes(x = logp_p_m, y = logp_p_s)) +
   annotate("text", x = 0, y = axis_limit, label = cor_label, hjust = 0, vjust = 1, size = 5, fontface = "bold") +
   xlim(0, axis_limit) + ylim(0, axis_limit) +
   coord_fixed() +
-  labs(title = "A", x = expression(bold(-log[10](p_MiXcan))), y = expression(bold(-log[10](p_SMiXcanK)))) +
-  my_theme + theme(panel.grid.major = element_line(color = "grey90"))
+  labs(x = expression(bold(-log[10](p))in mixcan), y = expression(bold(-log[10](p)))in smixcan) +
+  theme_classic()
+
+plot_a <- ggplot(df_c, aes(x = logp_p_m, y = logp_p_s)) +
+  geom_abline(intercept = 0, slope = 1,
+              color = "red", linetype = "dashed", linewidth = 1) +
+  geom_point(color = "#4E79A7", alpha = 0.3) +
+  annotate(
+    "text",
+    x = 0, y = axis_limit,
+    label = cor_label,
+    hjust = 0, vjust = 1,
+    size = 5, fontface = "bold"
+  ) +
+  xlim(0, axis_limit) +
+  ylim(0, axis_limit) +
+  coord_fixed() +
+  labs(
+    x = expression(-log[10](p) ~ "in MiXcan"),
+    y = expression(-log[10](p) ~ "in S-MiXcan")
+  ) +
+  theme_classic()
 
 # ==============================================================================
 # 3. Plot B: QQ Plot
@@ -61,16 +82,16 @@ bc <- bacon(y, na.exclude = TRUE)
 lambda_val <- inflation(bc)
 
 df_qq <- data.frame(obs = -log10(sort(p_clean_b)), exp = -log10(ppoints(length(p_clean_b))), gene = g_clean_b[order(p_clean_b)])
-top_genes_df <- head(df_qq, 8)
+top_genes_df <- head(df_qq, 10)
 
 plot_b <- ggplot(df_qq, aes(x = exp, y = obs)) +
   geom_abline(intercept = 0, slope = 1, color = "red", linetype = "dashed", linewidth = 1) +
   geom_point(color = "#4E79A7", alpha = 0.8, size = 2) +
-  geom_text_repel(data = top_genes_df, aes(label = gene), nudge_x = -1, nudge_y = 1, force = 5, box.padding = 0.5, size = 3.5, fontface = "bold") +
-  annotate("text", x = 0, y = max(df_qq$obs), label = bquote(lambda[GC] == .(round(lambda_val, 3))), hjust = 0, vjust = 1, size = 5, fontface = "bold") +
-  labs(title = "B", x = expression(bold(Expected ~ -log[10](p))), y = expression(bold(Observed ~ -log[10](p)))) +
-  my_theme
-
+  geom_text_repel(data = top_genes_df, aes(label = gene),fontface = "bold")  +
+  labs( x = expression(bold(Expected ~ -log[10](p))), y = expression(bold(Observed ~ -log[10](p)))) +
+  theme_classic()
+plot_b
+# + annotate("text", x = 0, y = max(df_qq$obs), label = bquote(lambda[GC] == .(round(lambda_val, 3))), hjust = 0, vjust = 1, size=5,color='blue', fontface = "bold")
 # ==============================================================================
 # 4. Primo Analysis & Filtering
 # ==============================================================================
@@ -116,11 +137,11 @@ circles <- data.frame(
   x0 = c(-0.8, 0.8),
   y0 = c(0, 0),
   r  = c(2, 2),
-  type = c("cell type 1", "cell type 2")
+  type = c("Epithelial", "Stromal")
 )
 
 # 颜色映射
-venn_colors <- c("cell type 1" = "#FDB462", "cell type 2" = "#4E79A7")
+venn_colors <- c("Epithelial" = "#FDB462", "Stromal" = "#4E79A7")
 
 # 计算总 N (用于百分比)
 N_total <- n_trait1 + n_trait2 + n_shared_total
@@ -134,7 +155,7 @@ plot_c_custom <- ggplot() +
 
   # 2. 画交集横线 (白色分割线)
   geom_segment(aes(x = -0.95, xend = 0.95, y = 0, yend = 0),
-               color = "white", linewidth = 1.2) +
+               color = "black", linewidth = 1.2) +
 
   # 3. 标注文字
   # 左 (Trait 1 Only)
@@ -150,20 +171,19 @@ plot_c_custom <- ggplot() +
   # 中上 (Specific)
   annotate("text", x = 0, y = 0.7,
            label = paste0(label_top, "\n", n_shared_specific),
-           size = 3.5, fontface = "bold", color = "white", lineheight=0.9) +
+           size = 3.5, fontface = "bold", color = "black", lineheight=0.9) +
 
   # 中下 (Non-specific)
   annotate("text", x = 0, y = -0.7,
            label = paste0(label_bottom, "\n", n_shared_nonspecific),
-           size = 3.5, fontface = "bold", color = "white", lineheight=0.9) +
+           size = 3.5, fontface = "bold", color = "black", lineheight=0.9) +
 
   # 顶部标题 (Cell Type 1 / 2)
-  annotate("text", x = -0.8, y = 2.4, label = "cell type 1", size = 5, fontface = "bold", color = "#FDB462") +
-  annotate("text", x = 0.8, y = 2.4, label = "cell type 2", size = 5, fontface = "bold", color = "#4E79A7") +
+  annotate("text", x = -0.8, y = 2.4, label = "Epithelial", size = 5, fontface = "bold", color = "#FDB462") +
+  annotate("text", x = 0.8, y = 2.4, label = "Stromal", size = 5, fontface = "bold", color = "#4E79A7") +
 
   # 4. 样式调整
   coord_fixed() +
-  labs(title = "C") +
   theme_void() +
   theme(
     plot.title = element_text(face = "bold", size = 16, hjust = 0, margin = margin(b = 10)),
@@ -182,8 +202,13 @@ final_figure <- plot_grid(
   align = 'h', axis = 'tb'
 )
 
+p1=plot_grid(plot_a, plot_b, plot_c_custom, ncol = 3,labels = c("A", "B", 'C'), rel_widths = c(1, 1, 1.2),
+             align = 'h', axis = 'tb')
+
+p1
 # 添加总标题
-final_figure_with_title <- plot_grid(
+library(cowplot)
+final_figure_with_title <- plot_grid(labels=c('a','b','c'),
   ggdraw(),
   final_figure,
   ncol = 1,
@@ -193,5 +218,5 @@ final_figure_with_title <- plot_grid(
 print(final_figure_with_title)
 
 # 保存文件
-ggsave("/Users/zhusinan/Downloads/Figure2_Final_SplitShared.pdf", final_figure_with_title, width = 17, height = 6)
+ggsave("/Users/zhusinan/Downloads/Figure2_Final_0113.pdf", final_figure_with_title, width = 12, height = 5)
 

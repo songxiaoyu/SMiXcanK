@@ -18,7 +18,7 @@ SMiXcan_assoc_test_K(
 
 \item{gwas_results}{A list containing GWAS summary statistics, with components \code{Beta} and \code{se_Beta}.}
 
-\item{x_g}{A genotype matrix for the reference panel (individuals \times SNPs).}
+\item{x_g}{A genotype matrix for the reference panel (individuals * SNPs).}
 
 \item{n0}{Number of controls.}
 

@@ -45,7 +45,7 @@ regularized_inverse_cov <- function(X) {
 #'
 #' @param W A p-by-k matrix of cell-type level weights  (where p is the number of SNPs in the gene region, k is the number of cell types).
 #' @param gwas_results A list containing GWAS summary statistics, with components \code{Beta} and \code{se_Beta}.
-#' @param x_g A genotype matrix for the reference panel (individuals \times SNPs).
+#' @param x_g A genotype matrix for the reference panel (individuals * SNPs).
 #' @param n0 Number of controls.
 #' @param n1 Number of cases.
 #' @param family Either \code{"binomial"} or \code{"gaussian"} (used for fitting the null model).
