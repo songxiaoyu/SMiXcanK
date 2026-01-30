@@ -1,0 +1,70 @@
+# S-MiXcan
+
+**S-MiXcan** is an R package for performing cell-type-aware **summary-based transcriptome-wide association studies (TWAS)**. It extends the MiXcan framework to analyze associations between genetically regulated gene expression (GReX) and traits and their functional cell types using GWAS summary statistics.
+
+------------------------------------------------------------------------
+
+## 🔬 Overview
+
+Traditional TWAS approaches predict gene expression at the *bulk tissue* level and test its association with disease traits, ignoring heterogeneity across cell types. **MiXcan** improves on this by enabling cell-type-aware TWAS, but it requires *individual-level genotype data*.
+
+**S-MiXcan** addresses this limitation.\
+It provides a **summary-statistics-based** framework that:
+
+-   Infers cell-type-specific GReX--trait associations from GWAS summary statistics.
+-   Leverages MiXcan-trained cell-type models.
+-   Evaluates functional cell-types.
+-   Requires **no individual-level genotype data**.
+
+------------------------------------------------------------------------
+
+## 📦 Installation
+
+You can install the development version of `S-MiXcan` from GitHub:
+
+``` r
+# Install devtools if not already installed
+install.packages("devtools")
+
+# Install S-MiXcan from GitHub
+devtools::install_github("songxiaoyu/SMiXcan")
+
+library(SMiXcan)
+```
+
+------------------------------------------------------------------------
+
+## 🧪 Example Usage
+
+``` r
+# Define input 
+data(W)                
+data(gwas_results)    
+data(X_ref_filtered)   
+data(n0)
+data(n1)
+
+
+# Perform association test
+S_MiXcan_results <- SMiXcan_assoc_test(W[,1], W[,2], gwas_results, X_ref_filtered, n0=n0, n1=n1, family='binomial')
+```
+
+------------------------------------------------------------------------
+
+## 📄 Citation
+
+If you use **S-MiXcan** in your research, please cite this page
+
+------------------------------------------------------------------------
+
+## 📫 Contact
+
+For questions, please contact:
+
+**Sinan Zhu**\
+PhD Candidate, Duke-NUS Medical School\
+Email: [sinan.zhu\@u.duke.nus.edu](mailto:sinan.zhu@u.duke.nus.edu){.email}
+
+------------------------------------------------------------------------
+
+## 🔒 License
