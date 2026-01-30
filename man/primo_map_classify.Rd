@@ -10,7 +10,7 @@ primo_map_classify(
   type_col = "type",
   alt_props = 0.05,
   specific_label = "CellTypeSpecific",
-  unspecific_label = "UnSpecific",
+  unspecific_label = "NonSpecific",
   ...
 )
 }
