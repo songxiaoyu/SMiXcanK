@@ -19,8 +19,6 @@
 #' \describe{
 #'   \item{out}{Original data.frame with posterior probabilities
 #'   (prefixed by \code{"post__"}) and a \code{MAP} column appended.}
-#'   \item{primo_specific}{PRIMO result object for specific rows (or NULL).}
-#'   \item{primo_unspecific}{PRIMO result object for non-specific rows (or NULL).}
 #' }
 #'
 #' @details
@@ -85,39 +83,28 @@ primo_map_classify <- function(
   # --- specific ---
   if (length(idx_spec) > 0) {
     pmat1 <- as.matrix(merged[idx_spec, pvals_names, drop = FALSE])
-    res1 <- Primo::Primo_pval(pvals = pmat1, alt_props = alt_props, ...)
-    post_cols <- colnames(res1$post_prob)
+    res1 <- Primo::Primo_pval(pvals = pmat1, alt_props = alt_props)
+    # post_cols <- colnames(res1$post_prob)
   }
 
-  # --- unspecific ---
-  if (length(idx_uns) > 0) {
-    pmat2 <- as.matrix(merged[idx_uns, pvals_names, drop = FALSE])
-    res2 <- Primo::Primo_pval(pvals = pmat2, alt_props = alt_props)
-    if (is.null(post_cols)) {
-      post_cols <- colnames(res2$post_prob)
-    }
-  }
+  # --- unspecific --
 
   # allocate posterior matrix
-  post_mat <- matrix(NA_real_, nrow = nrow(merged), ncol = length(post_cols))
-  colnames(post_mat) <- paste0("post__", post_cols)
+  post_mat <- as.data.frame(
+    matrix(
+      NA_real_,
+      nrow = nrow(merged),
+      ncol = ncol(res1$post_prob)
+    )
+  )
 
-  if (!is.null(res1)) post_mat[idx_spec, ] <- as.matrix(res1$post_prob)
-  if (!is.null(res2)) post_mat[idx_uns, ]  <- as.matrix(res2$post_prob)
-
-  # MAP classification
-  MAP <- apply(post_mat, 1, function(x) {
-    if (all(is.na(x))) NA_character_
-    else colnames(post_mat)[which.max(x)]
-  })
+  post_mat[idx_spec, ] <- data.frame(res1$post_prob)
 
   out <- cbind(merged, post_mat)
-  out$MAP <- MAP
+
 
   list(
-    out = out,
-    primo_specific = res1,
-    primo_unspecific = res2
+    out = out
   )
 }
 

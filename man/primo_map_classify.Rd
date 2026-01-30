@@ -37,8 +37,6 @@ A list with:
 \describe{
 \item{out}{Original data.frame with posterior probabilities
 (prefixed by \code{"post__"}) and a \code{MAP} column appended.}
-\item{primo_specific}{PRIMO result object for specific rows (or NULL).}
-\item{primo_unspecific}{PRIMO result object for non-specific rows (or NULL).}
 }
 }
 \description{
