@@ -24,10 +24,9 @@ It provides a **summary-statistics-based** framework that:
 
 ## 📦 Installation
 
-
 You can install the development version of `S-MiXcan` from GitHub:
 
-```{r, eval = TRUE}
+```{r, eval = FALSE}
 # Install devtools if not already installed
 if (!requireNamespace("devtools", quietly = TRUE)) {
   install.packages("devtools")
@@ -45,16 +44,66 @@ library(SMiXcanK)
 
 ```{r, eval = TRUE}
 # Define input 
-data(W)      
-str(W)
-data(gwas_results)    
-data(X_ref_filtered)   
-data(n0)
-data(n1)
+## Example: regularized_inverse_cov()
+
+set.seed(1)
+
+# Create a well-behaved covariance matrix (p x p)
+p <- 5
+A <- matrix(rnorm(p * p), p, p)
+X <- crossprod(A)  # symmetric positive-definite covariance-like matrix
+
+# Regularized inverse
+ri <- regularized_inverse_cov(X)
+
+# Outputs
+ri$lambda        # regularization strength used (scalar here)
+ri$inv[1:3, 1:3] # top-left corner of the inverse matrix
 
 
-# Perform association test
-S_MiXcan_results <- SMiXcan_assoc_test(W[,1], W[,2], gwas_results, X_ref_filtered, n0=n0, n1=n1, family='binomial')
+## Example: SMiXcan_assoc_test_K() with K = 3 cell types
+
+set.seed(123)
+
+# Dimensions
+n  <- 400   # reference panel individuals
+p  <- 60    # SNPs in gene region
+K  <- 3     # cell types
+
+# Reference genotype matrix (n x p); here simulated as standardized normals
+x_g <- scale(matrix(rnorm(n * p), n, p))
+
+# Cell-type weights matrix (p x K)
+W <- matrix(rnorm(p * K), p, K)
+
+# GWAS summary stats for the same p SNPs
+gwas_results <- list(
+  Beta    = rnorm(p, mean = 0, sd = 0.05),
+  se_Beta = runif(p, min = 0.02, max = 0.08)
+)
+
+# Case/control sample sizes (for binomial null model)
+n1 <- 5000
+n0 <- 5000
+
+# Run S-MiXcan association test (K = 3)
+res <- SMiXcan_assoc_test_K(
+  W = W,
+  gwas_results = gwas_results,
+  x_g = x_g,
+  n0 = n0,
+  n1 = n1,
+  family = "binomial"
+)
+
+# Results:
+# - Z_join: joint-model Z for each cell type (length K)
+# - p_join_vec: per-cell-type joint p-values (length K)
+# - p_join: ACAT-combined p across K cell types
+res$Z_join
+res$p_join_vec
+res$p_join
+
 ```
 
 ------------------------------------------------------------------------

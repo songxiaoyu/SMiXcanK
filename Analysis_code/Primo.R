@@ -2,55 +2,99 @@ library('Primo')
 library('SMiXcanK')
 merged <- read.csv("/Users/zhusinan/Downloads/S-MiXcan_code_folder/3pi/merged_ct3_ct2.csv")
 
-# 2 cell types
-merged$fwer_p_1_ct2 <- p.adjust(merged$p_1_ct2, method = "bonferroni")
-merged$fwer_p_2_ct2 <- p.adjust(merged$p_2_ct2, method = "bonferroni")
+#Calculate FDR
 merged$fdr_p_1_ct2 <- p.adjust(merged$p_1_ct2, method = "BH")
 merged$fdr_p_2_ct2 <- p.adjust(merged$p_2_ct2, method = "BH")
+merged$fdr_p_2_ct2 <- p.adjust(merged$p_2_ct2, method = "BH")
+merged$fdr_p_join_ct2 <- p.adjust(merged$p_join_ct2, method = "BH")
 merged$fdr_p_1_ct3 <- p.adjust(merged$p_1_ct3, method = "BH")
 merged$fdr_p_2_ct3 <- p.adjust(merged$p_2_ct3, method = "BH")
 merged$fdr_p_3 <- p.adjust(merged$p_3, method = "BH")
+merged$fdr_p_join_ct3 <- p.adjust(merged$p_join_ct3, method = "BH")
 
 # ==============================================================================
-# Numbers for Plot C (computed from your provided logic)
+# Numbers for Plot C (2 cell types)
 # ==============================================================================
 
 # Inputs
 fdr_cutoff <- 0.1
 specific_label   <- "CellTypeSpecific"
 nonspecific_label <- "NonSpecific"
+spec_idx_ct2 <- which(
+  merged$type_ct2 == 'CellTypeSpecific'
+)
+
+sig_gene_percentage <- length(
+  which(
+    merged$fdr_p_1_ct2 < fdr_cutoff |
+      merged$fdr_p_2_ct2 < fdr_cutoff
+  )
+) / nrow(merged)
 
 # 1) Split
 merged_ctspec <- merged[merged$type_ct2 == specific_label, , drop = FALSE]
 merged_unspec <- merged[merged$type_ct2 == nonspecific_label, , drop = FALSE]
 
 # 2) Run PRIMO on ALL specific rows (assume all specific)
-res <- primo_map_all(
-  merged_ctspec,
-  pvals_names = c("p_1_ct2", "p_2_ct2"),
-  alt_props   = c(0.05, 0.05)
+
+res_ct2 <- primo_map_classify(
+  merged,
+  c('p_1_ct2', 'p_2_ct2'),
+  type_col = "type_ct2",
+  alt_props = sig_gene_percentage/2,
+  specific_label = "CellTypeSpecific",
+  unspecific_label = "NonSpecific",
 )
+
+out_ct2 <- res_ct2$out
+View(out_ct2)
 
 # 3) Significant filter (OR rule), applied within each subset
 sig_spec_idx <- which(
-  merged_ctspec$fdr_p_1_ct2 < fdr_cutoff | merged_ctspec$fdr_p_2_ct2 < fdr_cutoff
+  merged$type_ct2 == 'CellTypeSpecific' & (merged$fdr_p_1_ct2 < fdr_cutoff | merged$fdr_p_2_ct2 < fdr_cutoff)
 )
 
+length(sig_spec_idx)
+
 sig_uns_idx <- which(
-  merged_unspec$fdr_p_1_ct2 < fdr_cutoff | merged_unspec$fdr_p_2_ct2 < fdr_cutoff
+  merged$type_ct2 == 'NonSpecific' & merged$fdr_p_join_ct2 < fdr_cutoff
 )
+
+length(sig_uns_idx)
 
 # 4) MAP class among significant specific rows
 #    Using posterior probs from PRIMO result (same row order as merged_ctspec)
-post_sig <- res$primo$post_prob[sig_spec_idx, , drop = FALSE]
-MAP_class <- max.col(post_sig)
+post_sig <- out_ct2[sig_spec_idx,c('V1','V2','V3','V4') , drop = FALSE]
+#MAP_class <- max.col(post_sig)
+
+post_non00 <- post_sig[, c("V2","V3","V4"), drop = FALSE]
+
+den <- rowSums(post_non00)
+post_cond <- post_non00
+ok <- den > 0
+post_cond[ok, ] <- sweep(post_non00[ok, , drop = FALSE], 1, den[ok], "/")
+post_cond[!ok, ] <- NA
+
+
+MAP_class_cond <- rep(NA_integer_, nrow(post_cond))
+MAP_class_cond[ok] <- max.col(post_cond[ok, , drop = FALSE])
+
+
+MAP_label_cond <- rep(NA_character_, length(MAP_class_cond))
+MAP_label_cond[ok] <- c("10","01","11")[MAP_class_cond[ok]]
+
 
 # 5) Assign Plot C numbers (this matches your earlier interpretation)
 #    For 2 traits, PRIMO commonly corresponds to patterns:
 #    1=null(00), 2=trait1 only(10), 3=trait2 only(01), 4=both(11)
-n_trait1 <- sum(MAP_class == 2, na.rm = TRUE)
-n_trait2 <- sum(MAP_class == 3, na.rm = TRUE)
-n_shared_specific <- sum(MAP_class == 4, na.rm = TRUE)
+#n_trait1 <- sum(MAP_class == 2, na.rm = TRUE)
+#n_trait2 <- sum(MAP_class == 3, na.rm = TRUE)
+#n_shared_specific <- sum(MAP_class == 4, na.rm = TRUE)
+
+n_trait1 <- sum(MAP_label_cond == "10", na.rm = TRUE)
+n_trait2 <- sum(MAP_label_cond == "01", na.rm = TRUE)
+n_shared_specific <- sum(MAP_label_cond == "11", na.rm = TRUE)
+
 
 # 6) Nonspecific significant count (your "n_shared_nonspecific")
 n_shared_nonspecific <- length(sig_uns_idx)
@@ -66,19 +110,22 @@ cat("n_shared_nonspecific =", n_shared_nonspecific, "\n")
 cat("n_shared_total =", n_shared_total, "\n")
 
 
-sub1_ct2 <- cbind(merged_ctspec[, c("gene_name", "gene_id","chr", "CYTOBAND", "type_ct2",
-                        "input_snp_num_ct2", "Z_1_ct2", "p_1_ct2", "Z_2_ct2", "p_2_ct2", "p_join_ct2"), ],res$post_prob)
+#sub1_ct2 <- cbind(merged_ctspec[, c("gene_name", "gene_id","chr", "CYTOBAND", "type_ct2",
+#                        "input_snp_num_ct2", "Z_1_ct2", "p_1_ct2", "Z_2_ct2", "p_2_ct2", "p_join_ct2"), ],res$post_prob)
 
 
-sub2_ct2 <- merged_unspec[, c("gene_name", "gene_id", "chr", "CYTOBAND",  "type_ct2",
-                              "input_snp_num_ct2", "Z_1_ct2", "p_1_ct2", "Z_2_ct2", "p_2_ct2", "p_join_ct2"), ]
-sub2_ct2[c("1", "2", "3", "4")] <- NA
+#sub2_ct2 <- merged_unspec[, c("gene_name", "gene_id", "chr", "CYTOBAND",  "type_ct2",
+#                              "input_snp_num_ct2", "Z_1_ct2", "p_1_ct2", "Z_2_ct2", "p_2_ct2", "p_join_ct2"), ]
+#sub2_ct2[c("1", "2", "3", "4")] <- NA
 
 
-fs1 <- rbind(sub1_ct2, sub2_ct2)
-colnames(fs1)[(ncol(fs1)-3):ncol(fs1)] <- c('prob_00', 'prob_10', 'prob_01', 'prob_11')
-colnames(fs1)[5:11] <- c('model',"input_snp_num", "Z_epi", "p_epi","Z_stromal","p_stromal","p_joint")
-write.csv(fs1, '/Users/zhusinan/Library/CloudStorage/Dropbox/Paper_SMiXcan/Results/SMiXcanK_results/tableS1.csv', row.names = FALSE)
+
+#fs1 <- rbind(sub1_ct2, sub2_ct2)
+colnames(out_ct2)[(ncol(out_ct2)-3):ncol(out_ct2)] <- c('prob_00', 'prob_10', 'prob_01', 'prob_11')
+out_ct2_final <- out_ct2[,c("gene_name", "gene_id","chr", "CYTOBAND", "type_ct2",
+                                                  "input_snp_num_ct2", "Z_1_ct2", "p_1_ct2", "Z_2_ct2", "p_2_ct2", "p_join_ct2", 'prob_00', 'prob_10', 'prob_01', 'prob_11')]
+colnames(out_ct2_final)[5:11] <- c('model',"input_snp_num", "Z_epi", "p_epi","Z_stromal","p_stromal","p_joint")
+write.csv(out_ct2_final, '/Users/zhusinan/Library/CloudStorage/Dropbox/Paper_SMiXcan/Results/SMiXcanK_results/tableS1_final.csv', row.names = FALSE)
 
 
 # 3 cell types

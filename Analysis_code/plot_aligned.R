@@ -105,44 +105,94 @@ plot_b <- ggplot(df_qq, aes(x = exp, y = obs)) +
 fdr_cutoff <- 0.1
 specific_label   <- "CellTypeSpecific"
 nonspecific_label <- "NonSpecific"
+spec_idx_ct2 <- which(
+  merged$type_ct2 == 'CellTypeSpecific'
+)
+merged$fdr_p_1_ct2 <- p.adjust(merged$p_1_ct2, method = "BH")
+merged$fdr_p_2_ct2 <- p.adjust(merged$p_2_ct2, method = "BH")
+merged$fdr_p_2_ct2 <- p.adjust(merged$p_2_ct2, method = "BH")
+merged$fdr_p_join_ct2 <- p.adjust(merged$p_join_ct2, method = "BH")
+sig_gene_percentage <- length(
+  which(
+    merged$fdr_p_1_ct2 < fdr_cutoff |
+      merged$fdr_p_2_ct2 < fdr_cutoff
+  )
+) / nrow(merged)
 
-# 1) Split
-merged_ctspec <- merged[merged$type_ct2 == specific_label, , drop = FALSE]
-merged_unspec <- merged[merged$type_ct2 == nonspecific_label, , drop = FALSE]
 
 # 2) Run PRIMO on ALL specific rows (assume all specific)
-res <- primo_map_all(
-  merged_ctspec,
-  pvals_names = c("p_1_ct2", "p_2_ct2"),
-  alt_props   = c(0.05, 0.05)
+
+res_ct2 <- primo_map_classify(
+  merged,
+  c('p_1_ct2', 'p_2_ct2'),
+  type_col = "type_ct2",
+  alt_props = sig_gene_percentage/2,
+  specific_label = "CellTypeSpecific",
+  unspecific_label = "NonSpecific",
 )
+
+out_ct2 <- res_ct2$out
+
 
 # 3) Significant filter (OR rule), applied within each subset
 sig_spec_idx <- which(
-  merged_ctspec$fdr_p_1_ct2 < fdr_cutoff | merged_ctspec$fdr_p_2_ct2 < fdr_cutoff
+  merged$type_ct2 == 'CellTypeSpecific' & (merged$fdr_p_1_ct2 < fdr_cutoff | merged$fdr_p_2_ct2 < fdr_cutoff)
 )
 
+length(sig_spec_idx)
+
 sig_uns_idx <- which(
-  merged_unspec$fdr_p_1_ct2 < fdr_cutoff | merged_unspec$fdr_p_2_ct2 < fdr_cutoff
+  merged$type_ct2 == 'NonSpecific' & merged$fdr_p_join_ct2 < fdr_cutoff
 )
+
+length(sig_uns_idx)
 
 # 4) MAP class among significant specific rows
 #    Using posterior probs from PRIMO result (same row order as merged_ctspec)
-post_sig <- res$primo$post_prob[sig_spec_idx, , drop = FALSE]
-MAP_class <- max.col(post_sig)
+post_sig <- out_ct2[sig_spec_idx,c('V1','V2','V3','V4') , drop = FALSE]
+#MAP_class <- max.col(post_sig)
+
+post_non00 <- post_sig[, c("V2","V3","V4"), drop = FALSE]
+
+den <- rowSums(post_non00)
+post_cond <- post_non00
+ok <- den > 0
+post_cond[ok, ] <- sweep(post_non00[ok, , drop = FALSE], 1, den[ok], "/")
+post_cond[!ok, ] <- NA
+
+
+MAP_class_cond <- rep(NA_integer_, nrow(post_cond))
+MAP_class_cond[ok] <- max.col(post_cond[ok, , drop = FALSE])
+
+
+MAP_label_cond <- rep(NA_character_, length(MAP_class_cond))
+MAP_label_cond[ok] <- c("10","01","11")[MAP_class_cond[ok]]
+
 
 # 5) Assign Plot C numbers (this matches your earlier interpretation)
 #    For 2 traits, PRIMO commonly corresponds to patterns:
 #    1=null(00), 2=trait1 only(10), 3=trait2 only(01), 4=both(11)
-n_trait1 <- sum(MAP_class == 2, na.rm = TRUE)
-n_trait2 <- sum(MAP_class == 3, na.rm = TRUE)
-n_shared_specific <- sum(MAP_class == 4, na.rm = TRUE)
+#n_trait1 <- sum(MAP_class == 2, na.rm = TRUE)
+#n_trait2 <- sum(MAP_class == 3, na.rm = TRUE)
+#n_shared_specific <- sum(MAP_class == 4, na.rm = TRUE)
+
+n_trait1 <- sum(MAP_label_cond == "10", na.rm = TRUE)
+n_trait2 <- sum(MAP_label_cond == "01", na.rm = TRUE)
+n_shared_specific <- sum(MAP_label_cond == "11", na.rm = TRUE)
+
 
 # 6) Nonspecific significant count (your "n_shared_nonspecific")
 n_shared_nonspecific <- length(sig_uns_idx)
 
 # 7) Total shared
 n_shared_total <- n_shared_specific + n_shared_nonspecific
+
+# (Optional) sanity print
+cat("n_trait1 =", n_trait1, "\n")
+cat("n_trait2 =", n_trait2, "\n")
+cat("n_shared_specific =", n_shared_specific, "\n")
+cat("n_shared_nonspecific =", n_shared_nonspecific, "\n")
+cat("n_shared_total =", n_shared_total, "\n")
 
 # ==============================================================================
 # 5. Plot C: Custom Split Venn (KEEP your hand-written numbers)
@@ -235,6 +285,6 @@ final_figure <- cowplot::plot_grid(
 
 print(final_figure)
 
-ggsave("/Users/zhusinan/Downloads/Figure2_Final_AJHG_aligned.pdf",
+ggsave("/Users/zhusinan/Downloads/Figure2_Final_AJHG_aligned_1.pdf",
        final_figure, width = 15, height = 5)
 
