@@ -92,9 +92,6 @@ plot_b <- ggplot(df_qq, aes(x = exp, y = obs)) +
     plot.margin = margin(10, 10, 10, 10)
   )
 
-# ==============================================================================
-# 4. Primo Analysis & Filtering (unchanged)
-# ==============================================================================
 
 # ==============================================================================
 # 5. Plot C: Custom Split Venn (KEEP your hand-written numbers)
@@ -107,56 +104,18 @@ library(ggplot2)
 library(ggforce)
 library(cowplot)
 
-# -----------------------
-# (A) Counts (ct3 version)
-# -----------------------
-fdr_cutoff <- 0.1
-specific_label    <- "CellTypeSpecific"
-nonspecific_label <- "NonSpecific"
-
-# EDIT these names to your real ct3 column names
-pvals_names_ct3 <- c("p_1_ct3", "p_2_ct3", "p_3")
-fdr_names_ct3   <- c("fdr_p_1_ct3", "fdr_p_2_ct3", "fdr_p_3")
-type_col_ct3    <- "type_ct3"
-
-merged_ctspec <- merged[merged[[type_col_ct3]] == specific_label, , drop = FALSE]
-merged_unspec <- merged[merged[[type_col_ct3]] == nonspecific_label, , drop = FALSE]
-
-res <- primo_map_all(
-  merged_ctspec,
-  pvals_names = pvals_names_ct3,
-  alt_props   = rep(0.02, length(pvals_names_ct3))
-)
-
-sig_spec_idx <- which(rowSums(merged_ctspec[, fdr_names_ct3, drop = FALSE] < fdr_cutoff, na.rm = TRUE) > 0)
-sig_uns_idx  <- which(rowSums(merged_unspec[,  fdr_names_ct3, drop = FALSE] < fdr_cutoff, na.rm = TRUE) > 0)
-
-post_sig <- res$primo$post_prob[sig_spec_idx, , drop = FALSE]
-MAP_pat  <- max.col(post_sig)  # 1..8
-
-# pattern bin for 3 traits
-pattern_bin <- as.matrix(expand.grid(
-  CT1 = c(0, 1),
-  CT2 = c(0, 1),
-  CT3 = c(0, 1)
-))
-
-pat_str <- apply(pattern_bin[MAP_pat, , drop = FALSE], 1, paste0, collapse = "")
-pat_str <- pat_str[pat_str != "000"]  # drop null
-venn_counts <- table(pat_str)
-get_n <- function(key) if (key %in% names(venn_counts)) as.integer(venn_counts[[key]]) else 0L
 
 # 7 regions
-n_ct1_only <- get_n("100")
-n_ct2_only <- get_n("010")
-n_ct3_only <- get_n("001")
-n_ct1_ct2  <- get_n("110")
-n_ct1_ct3  <- get_n("101")
-n_ct2_ct3  <- get_n("011")
-n_ct1_ct2_ct3 <- get_n("111")
+n_ct1_only <- 0
+n_ct2_only <- 4
+n_ct3_only <- 9
+n_ct1_ct2  <- 2
+n_ct1_ct3  <- 0
+n_ct2_ct3  <- 1
+n_shared_specific <- 9
 
-# nonspecific (single number, like your ct2 split)
-n_shared_nonspecific <- length(sig_uns_idx)
+# nonspecific
+n_shared_nonspecific <- 8
 
 # -----------------------
 # (B) Plot: 3-circle Venn
@@ -180,10 +139,10 @@ library(ggplot2)
 library(ggforce)
 
 # ---- circle labels + colors ----
-ct_labels <- c("Cell type 1", "Cell type 2", "Cell type 3")
-venn_colors <- c("Cell type 1" = "#FDB462",
-                 "Cell type 2" = "#4E79A7",
-                 "Cell type 3" = "#59A14F")
+ct_labels <- c("Adipose", "Fibroblast", "Epithelial")
+venn_colors <- c("Adipose" = "#FDB462",
+                 "Fibroblast" = "#4E79A7",
+                 "Epithelial" = "#59A14F")
 
 # ---- circle geometry (match your screenshot) ----
 circles <- data.frame(
@@ -198,17 +157,17 @@ pos <- list(
   ct1_only = c(-2.25,  0.70),
   ct2_only = c( 2.25,  0.70),
   ct3_only = c( 0.00, -2.40),
-  
+
   ct1_ct2  = c( 0.00,  1.25),
   ct1_ct3  = c(-0.90, -0.55),
   ct2_ct3  = c( 0.90, -0.55),
-  
+
   triple   = c( 0.00, -0.05),   # slightly below "Cell type 3" label area
-  
+
   title1   = c(-1.10,  2.80),
   title2   = c( 1.10,  2.80),
   title3   = c( 0.00,  -3.20),   # moved up to avoid overlap
-  
+
   spec_txt = c( 0.00,  0.55),
   line_y   = 0.15,
   nons_txt = c( 0.00, -0.35)
@@ -222,7 +181,7 @@ plot_c3_final <- ggplot() +
   ) +
   scale_fill_manual(values = venn_colors) +
   scale_color_manual(values = venn_colors) +
-  
+
   # ---- region numbers ----
 annotate("text", x = pos$ct1_only[1], y = pos$ct1_only[2],
          label = n_ct1_only, size = 5, fontface = "bold", color = "black") +
@@ -230,17 +189,17 @@ annotate("text", x = pos$ct1_only[1], y = pos$ct1_only[2],
            label = n_ct2_only, size = 5, fontface = "bold", color = "black") +
   annotate("text", x = pos$ct3_only[1], y = pos$ct3_only[2],
            label = n_ct3_only, size = 5, fontface = "bold", color = "black") +
-  
+
   annotate("text", x = pos$ct1_ct2[1], y = pos$ct1_ct2[2],
            label = n_ct1_ct2, size = 4.8, fontface = "bold", color = "black") +
   annotate("text", x = pos$ct1_ct3[1], y = pos$ct1_ct3[2],
            label = n_ct1_ct3, size = 4.8, fontface = "bold", color = "black") +
   annotate("text", x = pos$ct2_ct3[1], y = pos$ct2_ct3[2],
            label = n_ct2_ct3, size = 4.8, fontface = "bold", color = "black") +
-  
-  annotate("text", x = pos$triple[1], y = pos$triple[2],
-           label = n_ct1_ct2_ct3, size = 4.8, fontface = "bold", color = "black") +
-  
+
+  #annotate("text", x = pos$triple[1], y = pos$triple[2],
+    #       label = n_ct1_ct2_ct3, size = 4.8, fontface = "bold", color = "black") +
+
   # ---- titles (all black) ----
 annotate("text", x = pos$title1[1], y = pos$title1[2],
          label = ct_labels[1], size = 5, fontface = "bold", color = "black") +
@@ -248,19 +207,19 @@ annotate("text", x = pos$title1[1], y = pos$title1[2],
            label = ct_labels[2], size = 5, fontface = "bold", color = "black") +
   annotate("text", x = pos$title3[1], y = pos$title3[2],
            label = ct_labels[3], size = 5, fontface = "bold", color = "black") +
-  
+
   # ---- split center ----
 annotate("text", x = pos$spec_txt[1], y = pos$spec_txt[2],
          label = paste0("Cell Type\nSpecific\n", n_shared_specific),
          size = 3.8, fontface = "bold", color = "black", lineheight = 0.95) +
-  
+
   annotate("segment", x = -0.9, xend = 0.9, y = pos$line_y, yend = pos$line_y,
            color = "black", linewidth = 1.2) +
-  
+
   annotate("text", x = pos$nons_txt[1], y = pos$nons_txt[2],
            label = paste0("Non-specific\n", n_shared_nonspecific),
            size = 3.8, fontface = "bold", color = "black", lineheight = 0.95) +
-  
+
   coord_fixed() +
   xlim(-3.5, 3.5) +
   ylim(-3.2, 3.2) +
@@ -291,11 +250,14 @@ plot_ab <- cowplot::plot_grid(
 )
 
 # (2) 让 C “视觉高度”接近 A/B（上下加一点空白）
-plot_c_tall <- cowplot::plot_grid(
-  ggdraw(), plot_c3_final, ggdraw(),
-  ncol = 1,
-  rel_heights = c(0.18, 1, 0.18)
-)
+plot_c_tall <- cowplot::ggdraw() +
+  cowplot::draw_plot(
+    plot_c3_final,
+    x = 0, y = 0,
+    width = 1, height = 1,
+    scale = 1   # 👈 放大倍数，1.15–1.35 都很安全
+  )
+
 
 # (3) 最终拼三块，并统一加 A/B/C label
 final_figure <- cowplot::plot_grid(
@@ -311,6 +273,6 @@ final_figure <- cowplot::plot_grid(
 
 print(final_figure)
 
-ggsave("/Users/zhusinan/Downloads/FigureS1.pdf",
-       final_figure, width = 30, height = 10)
+ggsave("/Users/zhusinan/Downloads/FigureS1_5.pdf",
+       final_figure, width = 15, height = 5)
 

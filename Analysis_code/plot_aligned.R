@@ -133,10 +133,10 @@ res_ct2 <- primo_map_classify(
 
 out_ct2 <- res_ct2$out
 
-
+length(which(merged$fdr_p_join_ct2 < fdr_cutoff ))
 # 3) Significant filter (OR rule), applied within each subset
 sig_spec_idx <- which(
-  merged$type_ct2 == 'CellTypeSpecific' & (merged$fdr_p_1_ct2 < fdr_cutoff | merged$fdr_p_2_ct2 < fdr_cutoff)
+  merged$type_ct2 == 'CellTypeSpecific' & merged$fdr_p_join_ct2 < fdr_cutoff
 )
 
 length(sig_spec_idx)
@@ -169,13 +169,7 @@ MAP_label_cond <- rep(NA_character_, length(MAP_class_cond))
 MAP_label_cond[ok] <- c("10","01","11")[MAP_class_cond[ok]]
 
 
-# 5) Assign Plot C numbers (this matches your earlier interpretation)
-#    For 2 traits, PRIMO commonly corresponds to patterns:
-#    1=null(00), 2=trait1 only(10), 3=trait2 only(01), 4=both(11)
-#n_trait1 <- sum(MAP_class == 2, na.rm = TRUE)
-#n_trait2 <- sum(MAP_class == 3, na.rm = TRUE)
-#n_shared_specific <- sum(MAP_class == 4, na.rm = TRUE)
-
+# 5) Assign Plot C numbers
 n_trait1 <- sum(MAP_label_cond == "10", na.rm = TRUE)
 n_trait2 <- sum(MAP_label_cond == "01", na.rm = TRUE)
 n_shared_specific <- sum(MAP_label_cond == "11", na.rm = TRUE)
@@ -285,6 +279,6 @@ final_figure <- cowplot::plot_grid(
 
 print(final_figure)
 
-ggsave("/Users/zhusinan/Downloads/Figure2_Final_AJHG_aligned_1.pdf",
+ggsave("/Users/zhusinan/Downloads/Figure2_Final_AJHG_aligned_2.pdf",
        final_figure, width = 15, height = 5)
 

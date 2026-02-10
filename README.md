@@ -1,163 +1,198 @@
 
-# S-MiXcan
+~~~{r setup, include=FALSE} knitr::opts_chunk\$set( collapse = TRUE,
+comment = “\#\>”, message = FALSE, warning = FALSE )~~~
 
-**S-MiXcan** is an R package for performing cell-type-aware
-**summary-based transcriptome-wide association studies (TWAS)**. It
-extends the MiXcan framework to analyze associations between genetically
-regulated gene expression (GReX) and traits and their functional cell
-types using GWAS summary statistics.
+# SMiXcan: Cell-type–aware TWAS for K cell types
 
-------------------------------------------------------------------------
+**SMiXcan** is a summary statistics-based, cell-type-aware TWAS
+framework that infers associations between disease risk and predicted
+cell-type-specific expression using only GWAS summary statistics.
 
-## 🔬 Overview
-
-Traditional TWAS approaches predict gene expression at the *bulk tissue*
-level and test its association with disease traits, ignoring
-heterogeneity across cell types. **MiXcan** improves on this by enabling
-cell-type-aware TWAS, but it requires *individual-level genotype data*.
-
-**S-MiXcan** addresses this limitation.  
-It provides a **summary-statistics-based** framework that:
-
-- Infers cell-type-specific GReX–trait associations from GWAS summary
-  statistics.
-- Leverages MiXcan-trained cell-type models.
-- Evaluates functional cell-types.
-- Requires **no individual-level genotype data**.
+This document demonstrates the **basic SMiXcan workflow** in four steps
+using **small example data included in the package**.  
+The example is intended to illustrate **how to run the functions**, not
+to produce biological conclusions.
 
 ------------------------------------------------------------------------
 
-## 📦 Installation
+## Overview of the workflow
 
-You can install the development version of `S-MiXcan` from GitHub:
+The SMiXcan pipeline consists of four modular steps:
 
-``` r
-# Install devtools if not already installed
-if (!requireNamespace("devtools", quietly = TRUE)) {
-  install.packages("devtools")
-}
+1.  Estimate cell-type fractions from bulk expression  
+2.  Train cell-type–specific gene expression prediction models  
+3.  Perform SMiXcan association testing  
+4.  (Optional) Classify cell-type association patterns using PRIMO
 
-# Install S-MiXcan from GitHub
-devtools::install_github("songxiaoyu/SMiXcanK")
-
-library(SMiXcanK)
-```
+Each step corresponds to one exported function.
 
 ------------------------------------------------------------------------
 
-## 🧪 Example Usage
+## Step 1: Estimate cell-type fractions
 
-``` r
-# Define input 
-## Example: regularized_inverse_cov()
+Cell-type fractions represent the proportion of each cell type
+contributing to each bulk RNA-seq sample. These fractions can be
+estimated from marker genes.
 
-set.seed(1)
+\~\~~{r step1-pi} library(SMiXcanK)
 
-# Create a well-behaved covariance matrix (p x p)
-p <- 5
-A <- matrix(rnorm(p * p), p, p)
-X <- crossprod(A)  # symmetric positive-definite covariance-like matrix
+data(exprB_example, markers_example)
 
-# Regularized inverse
-ri <- regularized_inverse_cov(X)
+res_pi \<- pi_estimation_K( exprB = exprB_example, markers =
+markers_example, seed = 1, n.iter = 1000, burn.in = 200 )
 
-# Outputs
-ri$lambda        # regularization strength used (scalar here)
-```
+head(res_pi\$cell_fraction) \~\~~
 
-    ##            [,1]       [,2]       [,3]       [,4]       [,5]
-    ## [1,] 0.10000000 0.06833590 0.08766259 0.06451824 0.09455443
-    ## [2,] 0.06833590 0.10000000 0.09423659 0.08650160 0.08679522
-    ## [3,] 0.08766259 0.09423659 0.10000000 0.08587295 0.09832630
-    ## [4,] 0.06451824 0.08650160 0.08587295 0.10000000 0.08199720
-    ## [5,] 0.09455443 0.08679522 0.09832630 0.08199720 0.10000000
+### Parameters
 
-``` r
-ri$inv[1:3, 1:3] # top-left corner of the inverse matrix
-```
+- `exprB`  
+  Bulk expression matrix (genes × samples).
 
-    ##             [,1]       [,2]        [,3]
-    ## [1,]  0.44205757 0.02250073 -0.01685235
-    ## [2,]  0.02250073 1.19681386  0.54483091
-    ## [3,] -0.01685235 0.54483091  0.63059602
+- `markers`  
+  Named list of marker genes defining each cell type. The list length
+  determines the number of cell types K.
 
-``` r
-## Example: SMiXcan_assoc_test_K() with K = 3 cell types
+- `seed`  
+  Random seed for reproducibility.
 
-set.seed(123)
+- `n.iter`, `burn.in`  
+  MCMC settings passed to the underlying estimator.
 
-# Dimensions
-n  <- 400   # reference panel individuals
-p  <- 60    # SNPs in gene region
-K  <- 3     # cell types
+### Output
 
-# Reference genotype matrix (n x p); here simulated as standardized normals
-x_g <- scale(matrix(rnorm(n * p), n, p))
+- `cell_fraction`  
+  A data frame with one row per sample and one column per cell type.
 
-# Cell-type weights matrix (p x K)
-W <- matrix(rnorm(p * K), p, K)
-
-# GWAS summary stats for the same p SNPs
-gwas_results <- list(
-  Beta    = rnorm(p, mean = 0, sd = 0.05),
-  se_Beta = runif(p, min = 0.02, max = 0.08)
-)
-
-# Case/control sample sizes (for binomial null model)
-n1 <- 5000
-n0 <- 5000
-
-# Run S-MiXcan association test (K = 3)
-res <- SMiXcan_assoc_test_K(
-  W = W,
-  gwas_results = gwas_results,
-  x_g = x_g,
-  n0 = n0,
-  n1 = n1,
-  family = "binomial"
-)
-
-# Results:
-# - Z_join: joint-model Z for each cell type (length K)
-# - p_join_vec: per-cell-type joint p-values (length K)
-# - p_join: ACAT-combined p across K cell types
-res$Z_join
-```
-
-    ## [1] 0.06863635 1.04781404 0.69442659
-
-``` r
-res$p_join_vec
-```
-
-    ## [1] 0.9452791 0.2947243 0.4874147
-
-``` r
-res$p_join
-```
-
-    ## [1] 0.827071
+> SMiXcan does not require this specific estimator.  
+> Any N × K matrix of cell-type fractions can be used in later steps.
 
 ------------------------------------------------------------------------
 
-## 📄 Citation
+## Step 2: Train cell-type–specific MiXcan models
 
-If you use **S-MiXcan** in your research, please cite this page
+Next, we train genetic prediction models that allow SNP effects on
+expression to vary across cell types.
+
+\~\~~{r step2-training} data(x_example, y_example)
+
+pi_k \<- as.matrix(res_pi\$cell_fraction)
+
+fit \<- MiXcan_train_K_symmetric( y = y_example, x = x_example, pi_k =
+pi_k, yName = “GENE_A1” )
+
+fit$type fit$beta.SNP.by.cell \~\~~
+
+### Parameters
+
+- `y`  
+  Expression vector for a single gene (length = number of samples).
+
+- `x`  
+  Genotype matrix for cis-SNPs (samples × SNPs).
+
+- `pi_k`  
+  Cell-type fraction matrix (samples × K).
+
+- `yName`  
+  Optional gene identifier.
+
+### Output
+
+- `type`  
+  Model classification:
+  - `"CellTypeSpecific"`
+  - `"NonSpecific"`
+  - `"NoPredictor"`
+- `beta.SNP.by.cell`  
+  A list of length K, each element containing SNP weights for one cell
+  type.
 
 ------------------------------------------------------------------------
 
-## 📫 Contact
+## Step 3: SMiXcan association testing
 
-For questions, please contact:
+SMiXcan tests gene–trait associations by combining trained SNP weights
+with GWAS summary statistics while accounting for LD.
 
-**Sinan Zhu**  
-PhD Candidate, Duke-NUS Medical School  
-Email: <sinan.zhu@u.duke.nus.edu>
+\~\~~{r step3-association} data(gwas_example)
+
+W \<- do.call( cbind,
+lapply(fit$beta.SNP.by.cell, function(df) df$weight) )
+
+res_assoc \<- SMiXcan_assoc_test_K( W = W, gwas_results = gwas_example,
+x_g = x_example, n0 = 1000, n1 = 1000, family = “binomial” )
+
+res_assoc\$p_join \~\~~
+
+### Parameters
+
+- `W`  
+  SNP weight matrix (SNPs × cell types).
+
+- `gwas_results`  
+  List with GWAS summary statistics:
+
+  - `Beta`
+  - `se_Beta`
+
+- `x_g`  
+  Reference genotype matrix used to estimate LD.
+
+- `n0`, `n1`  
+  Number of controls and cases.
+
+- `family`  
+  Trait type:
+
+  - `"binomial"` (case–control)
+  - `"gaussian"` (quantitative)
+
+### Output
+
+- `p_join`  
+  Combined association p-value across cell types.
 
 ------------------------------------------------------------------------
 
-## 🔒 License
+## Step 4: PRIMO-based pattern classification (optional)
+
+After running SMiXcan genome-wide, results can be post-processed using
+PRIMO to classify cell-type association patterns among significant
+genes.
+
+\~\~~{r step4-primo} data(merged_example)
+
+res_primo \<- primo_pipeline_wrap( merged = merged_example, pvals_names
+= c(“p_1_ct2”, “p_2_ct2”), p_join_name = “p_join_ct2”, type_col =
+“type_ct2”, fdr_cutoff = 0.1 )
+
+res_primo$n_shared_total res_primo$tab_specific_patterns \~\~~
+
+### Key outputs
+
+- `out`  
+  Input table augmented with:
+
+  - FDR-adjusted p-values
+  - PRIMO posterior probabilities
+  - MAP pattern labels
+
+- `tab_specific_patterns`  
+  Counts of association patterns among significant cell-type-specific
+  genes.
+
+- `n_shared_total`  
+  Total number of shared genes.
 
 ------------------------------------------------------------------------
 
-\`\`\`r rmarkdown::render(“README.Rmd”)
+## Summary
+
+SMiXcan provides a flexible framework to:
+
+- model gene expression prediction across K cell types
+- allow shared and cell-type–specific genetic effects
+- perform joint TWAS using GWAS summary statistics
+- optionally classify cell-type association patterns using PRIMO
+
+Each step is modular and can be replaced or extended as needed.
