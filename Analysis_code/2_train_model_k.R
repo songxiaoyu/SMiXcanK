@@ -135,7 +135,7 @@ for (j in 1:G){
   #ft.sym=SMiXcan::train_prediction_model(y.train=y.complete, x.train=x.complete, pi.train=pi.complete,cov=z.complete, xNameMatrix=xName.all[xvar0,], foldid=foldid)
   ft.sym <- tryCatch({
     # Attempt to run the function
-    ft.sym  <- MiXcan_train_K_symmetric(
+    ft.sym  <- MiXcan_train_K(
       y = y.complete,
       x = x.complete,
       pi_k = pi.complete,

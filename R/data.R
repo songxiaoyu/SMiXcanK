@@ -47,3 +47,24 @@
 #' @format A data.frame.
 #' @source Included with the SMiXcanK package.
 "merged_example"
+
+#' Example cell-type fraction matrix (2 cell types)
+#'
+#' A small example cell-type fraction matrix used in the README
+#' demonstration. Each row corresponds to a sample and each column
+#' corresponds to a cell type. Rows approximately sum to 1.
+#'
+#' @format A numeric matrix with:
+#' \describe{
+#'   \item{rows}{20 samples (Sample1–Sample20)}
+#'   \item{columns}{2 cell types: Cell1 and Cell2}
+#' }
+#'
+#' @details
+#' This dataset is artificially generated for demonstration purposes.
+#' It is not intended for biological interpretation.
+#'
+#' @source Simulated example data
+#'
+"pi_k"
+

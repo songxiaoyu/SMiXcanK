@@ -25,8 +25,8 @@ vector of marker genes for cell type \code{cell.type[c]}.}
 A list with components:
 \describe{
 \item{cell_fraction}{A data frame of estimated cell-type fractions with
-one row per sample and one column per cell type, plus a \code{SampleID}
-column from row names.}
+one row per sample and one column per cell type, plus \code{SampleID}
+as row names.}
 \item{cell_expression}{Estimated cell-type–specific expression as returned
 by \code{BayesDeBulk}.}
 }

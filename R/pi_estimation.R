@@ -16,14 +16,12 @@
 #' @return A list with components:
 #' \describe{
 #'   \item{cell_fraction}{A data frame of estimated cell-type fractions with
-#'     one row per sample and one column per cell type, plus a \code{SampleID}
-#'     column from row names.}
+#'     one row per sample and one column per cell type, plus \code{SampleID}
+#'     as row names.}
 #'   \item{cell_expression}{Estimated cell-type–specific expression as returned
 #'     by \code{BayesDeBulk}.}
 #' }
 #'
-#' @importFrom tibble rownames_to_column
-#' @importFrom magrittr %>%
 #' @importFrom BayesDeBulk BayesDeBulk
 #' @export
 pi_estimation_K <- function(exprB,
@@ -53,9 +51,7 @@ pi_estimation_K <- function(exprB,
     ...
   )
 
-  cell_fraction <- fit$cell.fraction %>%
-    as.data.frame() %>%
-    tibble::rownames_to_column("SampleID")
+  cell_fraction <- as.data.frame(fit$cell.fraction)
 
   list(
     cell_fraction  = cell_fraction,

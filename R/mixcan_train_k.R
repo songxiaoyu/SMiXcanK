@@ -37,6 +37,8 @@
 #'     containing SNP annotation and cell-type-specific SNP weights.}
 #'   \item{beta.all.models}{Matrix of regression coefficients for the tissue-
 #'     level model and K cell-type models (intercepts + SNP + covariates).}
+#'   \item{W}{Numeric matrix (SNPs × K) of cell-type-specific SNP weights.
+#'     This is the matrix used directly in \code{SMiXcan_assoc_test_K()}.}
 #'   \item{glmnet.cell}{Fitted glmnet object for the K-cell model.}
 #'   \item{glmnet.tissue}{Fitted glmnet object for the tissue-level model
 #'     (ignoring cell-type composition).}
@@ -71,7 +73,7 @@
 #'
 #' @importFrom glmnet cv.glmnet glmnet
 #' @export
-MiXcan_train_K_symmetric <- function(y, x, cov = NULL, pi_k,
+MiXcan_train_K <- function(y, x, cov = NULL, pi_k,
                                      xNameMatrix = NULL, yName = NULL,
                                      foldid = NULL, alpha = 0.5) {
 
@@ -233,10 +235,10 @@ MiXcan_train_K_symmetric <- function(y, x, cov = NULL, pi_k,
   beta.SNP.by.cell <- vector("list", length = K)
   for (k in seq_len(K)) {
     beta.SNP.by.cell[[k]] <- data.frame(
-      xNameMatrix,
       weight = B_mat[, k],
       stringsAsFactors = FALSE
     )
+    rownames(beta.SNP.by.cell[[k]]) <- rownames(B_mat)
   }
   names(beta.SNP.by.cell) <- paste0("Cell", seq_len(K))
 
@@ -270,9 +272,11 @@ MiXcan_train_K_symmetric <- function(y, x, cov = NULL, pi_k,
     type             = Type,
     beta.SNP.by.cell = beta.SNP.by.cell,
     beta.all.models  = beta_all_models,
+    W                = B_mat,          # ← ADD THIS
     glmnet.cell      = ft,
     glmnet.tissue    = ft0,
     yName            = yName,
     xNameMatrix      = xNameMatrix
   )
+
 }

@@ -79,7 +79,7 @@ MiXcan_assoc_test <- function(outcome, cell1, cell2, family = 'binomial',
   g1 <- get_stats(s1); g2 <- get_stats(s2)
 
   # correlation check
-  rho <- suppressWarnings(cor(Ys[,1], Ys[,2]))
+  rho <- suppressWarnings(stats::cor(Ys[,1], Ys[,2]))
   if (!is.finite(rho)) rho <- 0
 
   # (1) Fallback if near-singular
@@ -117,7 +117,7 @@ MiXcan_assoc_test <- function(outcome, cell1, cell2, family = 'binomial',
   list(
     cell1_est = est1, cell1_se = se1, cell1_p = p1,
     cell2_est = est2, cell2_se = se2, cell2_p = p2,
-    p_combined = p_comb,
+    p_combined = p_comb
   )
 }
 
