@@ -72,16 +72,54 @@ gwas_example <- list(
 names(gwas_example$Beta)    <- colnames(x_example)
 names(gwas_example$se_Beta) <- colnames(x_example)
 
-# ----------------------------
-# 7) merged_example for PRIMO demo
-#    Make sure there are enough non-null-ish signals to avoid Primo failures
-# ----------------------------
+## -----------------------------
+## 7) Example genome-wide results
+## -----------------------------
+
+set.seed(123)
+
+G <- 300
+gene <- paste0("Gene", seq_len(G))
+
+# 150 specific, 150 nonspecific
+type_ct2 <- c(rep("CellTypeSpecific", G/2),
+              rep("NonSpecific",     G/2))
+
+# baseline null p-values
+p_1_ct2    <- runif(G)
+p_2_ct2    <- runif(G)
+p_join_ct2 <- runif(G)
+
+## ---- Inject true cell-type-specific signals ----
+idx_spec <- which(type_ct2 == "CellTypeSpecific")
+
+# Cell1-only
+sig1 <- sample(idx_spec, 20)
+p_1_ct2[sig1] <- 10^runif(length(sig1), -8, -5)
+
+# Cell2-only
+remaining <- setdiff(idx_spec, sig1)
+sig2 <- sample(remaining, 20)
+p_2_ct2[sig2] <- 10^runif(length(sig2), -8, -5)
+
+# Shared specific
+remaining <- setdiff(idx_spec, c(sig1, sig2))
+shared_spec <- sample(remaining, 15)
+p_1_ct2[shared_spec] <- 10^runif(length(shared_spec), -8, -5)
+p_2_ct2[shared_spec] <- 10^runif(length(shared_spec), -8, -5)
+
+## ---- Inject nonspecific joint signals ----
+idx_uns <- which(type_ct2 == "NonSpecific")
+sig_joint <- sample(idx_uns, 25)
+p_join_ct2[sig_joint] <- 10^runif(length(sig_joint), -10, -6)
+
 merged_example <- data.frame(
-  gene = paste0("Gene", 1:80),
-  type_ct2 = c(rep("CellTypeSpecific", 50), rep("NonSpecific", 30)),
-  p_1_ct2 = c(runif(10, 1e-10, 1e-4), runif(40, 0.2, 1), runif(30, 0.2, 1)),
-  p_2_ct2 = c(runif(10, 0.2, 1),      runif(10, 1e-10, 1e-4), runif(60, 0.2, 1)),
-  p_join_ct2 = c(runif(50, 0.2, 1), runif(5, 1e-12, 1e-6), runif(25, 0.2, 1))
+  gene        = gene,
+  type_ct2    = type_ct2,
+  p_1_ct2     = p_1_ct2,
+  p_2_ct2     = p_2_ct2,
+  p_join_ct2  = p_join_ct2,
+  stringsAsFactors = FALSE
 )
 
 # ----------------------------

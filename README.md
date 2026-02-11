@@ -246,3 +246,144 @@ res_assoc
 - If `p_join` is significant, the gene shows evidence of association.
 - `p_join_vec` indicates which cell types contribute most strongly.
 - The sign of `Z_join` indicates direction of effect.
+
+------------------------------------------------------------------------
+
+## Step 4: PRIMO-based cell-type association pattern classification (optional)
+
+After running SMiXcan genome-wide, we may wish to classify significant
+genes into cell-type association patterns using a PRIMO-based framework.
+
+This step:
+
+1.  Adjusts marginal and joint p-values using BH-FDR  
+2.  Identifies significant genes  
+3.  Estimates PRIMO posterior probabilities  
+4.  Assigns MAP patterns among non-null configurations
+
+``` r
+library(SMiXcanK)
+
+# Load example merged results
+data(merged_example)
+
+head(merged_example)
+```
+
+    ##    gene         type_ct2      p_1_ct2 p_2_ct2 p_join_ct2
+    ## 1 Gene1 CellTypeSpecific 1.000000e-08     0.5        0.5
+    ## 2 Gene2 CellTypeSpecific 1.623777e-08     0.5        0.5
+    ## 3 Gene3 CellTypeSpecific 2.636651e-08     0.5        0.5
+    ## 4 Gene4 CellTypeSpecific 4.281332e-08     0.5        0.5
+    ## 5 Gene5 CellTypeSpecific 6.951928e-08     0.5        0.5
+    ## 6 Gene6 CellTypeSpecific 1.128838e-07     0.5        0.5
+
+``` r
+res_primo <- primo_pipeline_wrap(
+  merged          = merged_example,
+  pvals_names     = c("p_1_ct2", "p_2_ct2"),
+  p_join_name     = "p_join_ct2",
+  type_col        = "type_ct2",
+  fdr_cutoff      = 0.1
+)
+```
+
+    ## 
+    ## Iteration: 1
+    ## Iteration: 2
+    ## Iteration: 3
+
+``` r
+res_primo$n_trait
+```
+
+    ## cell1 cell2 
+    ##    22    20
+
+``` r
+res_primo$n_shared_specific
+```
+
+    ## [1] 18
+
+``` r
+res_primo$n_shared_nonspecific
+```
+
+    ## [1] 15
+
+``` r
+res_primo$n_shared_total
+```
+
+    ## [1] 33
+
+``` r
+res_primo$tab_specific_patterns
+```
+
+    ## 
+    ## 01 10 11 
+    ## 20 22 18
+
+### Parameters
+
+- `merged`  
+  Data frame containing:
+
+  - marginal p-values for each cell type  
+  - joint p-value  
+  - cell-type specificity label
+
+- `pvals_names`  
+  Character vector of marginal p-value column names (length = K).
+
+- `p_join_name`  
+  Column name of joint (non-specific) p-value.
+
+- `type_col`  
+  Column indicating `"CellTypeSpecific"` vs `"NonSpecific"` genes.
+
+- `fdr_cutoff`  
+  FDR threshold used to define significance (default 0.1).
+
+------------------------------------------------------------------------
+
+### Key Outputs
+
+- `out`  
+  Input table augmented with:
+
+  - BH-adjusted p-values  
+  - PRIMO posterior probabilities (`post_*`)  
+  - MAP pattern labels (`MAP_pattern_nonnull`)
+
+- `n_trait`  
+  Number of genes uniquely associated with each cell type.
+
+- `n_shared_specific`  
+  Number of significant cell-type-specific genes associated with
+  multiple cell types.
+
+- `n_shared_nonspecific`  
+  Number of significant non-specific genes (based on joint test).
+
+- `n_shared_total`  
+  Total number of shared genes.
+
+- `tab_specific_patterns`  
+  Table summarizing MAP pattern counts among significant
+  cell-type-specific genes.
+
+### Interpretation
+
+For K = 2 cell types, PRIMO considers the following patterns:
+
+- `"10"` : associated only with cell type 1  
+- `"01"` : associated only with cell type 2  
+- `"11"` : associated with both cell types
+
+MAP classification is performed **only among significant
+cell-type-specific genes** and excludes the null pattern (`"00"`).
+
+------------------------------------------------------------------------
