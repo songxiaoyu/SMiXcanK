@@ -5,29 +5,16 @@
 
 set -euo pipefail
 
-CONDA_SH="${CONDA_SH:-/opt/anaconda3/etc/profile.d/conda.sh}"
-if [ -f "${CONDA_SH}" ]; then
-  source "${CONDA_SH}"
-fi
-
-PAPER_DIR="${PAPER_SMIXCAN_DIR:-/Users/zhusinan/Library/CloudStorage/Dropbox/Paper_SMiXcan}"
+PAPER_DIR="/Users/zhusinan/Library/CloudStorage/Dropbox/Paper_SMiXcan"
 DATA_DIR="${PAPER_DIR}/Data/plink_snplist_by_gene"
-WORKSPACE_DIR="${HERMES_WORKSPACE_DIR:-${PAPER_DIR}/Results/hermes_pwas/hermes_workspace}"
+WORKSPACE_DIR="${PAPER_DIR}/Results/hermes_pwas/hermes_workspace_moderate_100kb_r2_0.99_alpha0.5_lambdamin"
 GWAS_ID_DIR="${WORKSPACE_DIR}/hermes_filtered_id"
 EUR_SAMPLES="${PAPER_DIR}/Data/1000Genome/eur_ids.txt"
-
-CHR_LIST="${HERMES_CHR_LIST:-$(echo {1..22})}"
-PLINK2_ENV="${PWAS_PLINK2_ENV:-}"
-PLINK_ENV="${PWAS_PLINK_ENV:-}"
-PLINK2_BIN="${PLINK2_BIN:-plink2}"
-PLINK_BIN="${PLINK_BIN:-plink}"
+CHR_LIST="$(echo {1..22})"
+PLINK2_BIN="/opt/anaconda3/envs/plink2/bin/plink2"
 
 for chr in ${CHR_LIST}; do
   echo "Processing chr${chr}..."
-
-  if [ -n "${PLINK2_ENV}" ]; then
-    conda activate "${PLINK2_ENV}"
-  fi
 
   if [ -f "${DATA_DIR}/chr${chr}_hg38.pgen.zst" ]; then
     "${PLINK2_BIN}" --zst-decompress "${DATA_DIR}/chr${chr}_hg38.pgen.zst" "${DATA_DIR}/chr${chr}_hg38.pgen"
@@ -43,13 +30,9 @@ for chr in ${CHR_LIST}; do
     --make-bed \
     --out "${GWAS_ID_DIR}/filtered_chr${chr}_hg38_hermes_pwas"
 
-  if [ -n "${PLINK_ENV}" ]; then
-    conda activate "${PLINK_ENV}"
-  fi
-
-  "${PLINK_BIN}" \
+  "${PLINK2_BIN}" \
     --bfile "${GWAS_ID_DIR}/filtered_chr${chr}_hg38_hermes_pwas" \
-    --recodeA \
+    --export A \
     --out "${GWAS_ID_DIR}/filtered_chr${chr}_hg38_012_hermes_pwas"
 
   echo "Finished chr${chr}."

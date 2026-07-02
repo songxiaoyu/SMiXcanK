@@ -1,8 +1,8 @@
-# Plot HERMES PWAS results.
+# Plot HERMES_HFpEF HFpEF PWAS results.
 #
 # Outputs:
-#   Figure/hermes_pwas_moderate_100kb_r2_0.99_alpha0.5_lambdamin/HERMES_PWAS_fixed_0p005_QQ.pdf
-#   Figure/hermes_pwas_moderate_100kb_r2_0.99_alpha0.5_lambdamin/HERMES_PWAS_fixed_0p005_QQ_split_venn.pdf
+#   Figure/hermes_hfpef_pwas_moderate_100kb_r2_0.99_alpha0.5_lambdamin/HERMES_HFpEF_PWAS_fixed_0p005_QQ.pdf
+#   Figure/hermes_hfpef_pwas_moderate_100kb_r2_0.99_alpha0.5_lambdamin/HERMES_HFpEF_PWAS_fixed_0p005_QQ_split_venn.pdf
 
 library(ggplot2)
 library(ggrepel)
@@ -14,25 +14,25 @@ library(ggforce)
 paper_dir <- "/Users/zhusinan/Library/CloudStorage/Dropbox/Paper_SMiXcan"
 workspace_dir <- file.path(
   paper_dir,
-  "Results", "hermes_pwas",
-  "hermes_workspace_moderate_100kb_r2_0.99_alpha0.5_lambdamin"
+  "Results", "hermes_hfpef_pwas",
+  "hermes_hfpef_workspace_moderate_100kb_r2_0.99_alpha0.5_lambdamin"
 )
-results_dir <- file.path(workspace_dir, "hermes_result")
+results_dir <- file.path(workspace_dir, "hermes_hfpef_result")
 figure_dir <- file.path(
   paper_dir,
   "Figure",
-  "hermes_pwas_moderate_100kb_r2_0.99_alpha0.5_lambdamin"
+  "hermes_hfpef_pwas_moderate_100kb_r2_0.99_alpha0.5_lambdamin"
 )
 dir.create(figure_dir, recursive = TRUE, showWarnings = FALSE)
 
 base_font <- 12
 
-plot_prefix <- "HERMES_PWAS_fixed_0p005"
-result_path <- file.path(results_dir, "hermes_result_pwas.csv")
-annotated_path <- file.path(results_dir, "hermes_result_pwas_fixed_0p005_annotated.csv")
+plot_prefix <- "HERMES_HFpEF_PWAS_fixed_0p005"
+result_path <- file.path(results_dir, "hermes_hfpef_result_pwas.csv")
+annotated_path <- file.path(results_dir, "hermes_hfpef_result_pwas_fixed_0p005_annotated.csv")
 
 if (!file.exists(result_path)) {
-  stop("Missing HERMES PWAS result file: ", result_path, call. = FALSE)
+  stop("Missing HERMES_HFpEF HFpEF PWAS result file: ", result_path, call. = FALSE)
 }
 
 pwas_result <- read.csv(result_path)
@@ -44,6 +44,9 @@ if (file.exists(annotated_path)) {
 }
 
 # QQ plot.
+# Prefer the Primo-annotated result when available so labels and split-Venn
+# counts use the same post-processed table. Fall back to raw association
+# results when step 5 has not been run yet.
 qq_source <- if (!is.null(pwas_annotated)) pwas_annotated else pwas_result
 pvals <- qq_source$p_join
 gene_names <- qq_source$gene_name
@@ -91,7 +94,7 @@ plot_qq <- ggplot(df_qq, aes(x = exp, y = obs)) +
   labs(
     x = expression(bold(Expected ~ -log[10](p))),
     y = expression(bold(Observed ~ -log[10](p))),
-    title = "HERMES DCM PWAS"
+    title = "HERMES_HFpEF HFpEF PWAS"
   ) +
   theme_classic(base_size = base_font) +
   theme(
@@ -104,7 +107,8 @@ plot_qq <- ggplot(df_qq, aes(x = exp, y = obs)) +
 qq_path <- file.path(figure_dir, paste0(plot_prefix, "_QQ.pdf"))
 ggsave(qq_path, plot_qq, width = 5, height = 5)
 
-# Primo split Venn.
+# Primo split Venn. Cell-type-specific counts come from PRIMO MAP patterns;
+# non-specific shared counts are FDR-significant NonSpecific models.
 if (!is.null(pwas_annotated) && "MAP_pattern_nonnull" %in% names(pwas_annotated)) {
   n_cardiomyocytes <- length(which(pwas_annotated$MAP_pattern_nonnull == "10"))
   n_other <- length(which(pwas_annotated$MAP_pattern_nonnull == "01"))

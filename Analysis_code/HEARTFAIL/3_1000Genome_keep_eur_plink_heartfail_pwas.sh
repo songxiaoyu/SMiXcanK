@@ -18,9 +18,7 @@ EUR_SAMPLES="${PAPER_DIR}/Data/1000Genome/eur_ids.txt"
 
 CHR_LIST="${HEARTFAIL_CHR_LIST:-$(echo {1..22})}"
 PLINK2_ENV="${PWAS_PLINK2_ENV:-}"
-PLINK_ENV="${PWAS_PLINK_ENV:-}"
 PLINK2_BIN="${PLINK2_BIN:-plink2}"
-PLINK_BIN="${PLINK_BIN:-plink}"
 
 for chr in ${CHR_LIST}; do
   echo "Processing chr${chr}..."
@@ -43,13 +41,9 @@ for chr in ${CHR_LIST}; do
     --make-bed \
     --out "${GWAS_ID_DIR}/filtered_chr${chr}_hg38_heartfail_pwas"
 
-  if [ -n "${PLINK_ENV}" ]; then
-    conda activate "${PLINK_ENV}"
-  fi
-
-  "${PLINK_BIN}" \
+  "${PLINK2_BIN}" \
     --bfile "${GWAS_ID_DIR}/filtered_chr${chr}_hg38_heartfail_pwas" \
-    --recodeA \
+    --export A \
     --out "${GWAS_ID_DIR}/filtered_chr${chr}_hg38_012_heartfail_pwas"
 
   echo "Finished chr${chr}."

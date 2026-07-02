@@ -44,102 +44,188 @@ chr, pos_b37, A1, A2, A1_beta, se, pval
 Main output directory:
 
 ```text
-Results/hermes_pwas/hermes_workspace
+Results/hermes_pwas/hermes_workspace_moderate_100kb_r2_0.99_alpha0.5_lambdamin
 ```
 
 Figures:
 
 ```text
-Figure/hermes_pwas
+Figure/hermes_pwas_moderate_100kb_r2_0.99_alpha0.5_lambdamin
 ```
 
-## Workflow
+## Run The Workflow
 
 Run from the repository root.
 
-### 1. Liftover HERMES GWAS from hg19 to hg38
+### Option A. Run one file at a time
+
+#### 1. Liftover HERMES GWAS from hg19 to hg38
+
+Input:
+
+```text
+Heart/HERMES/HERMES2_GWAS_DCM_EUR/FORMAT-METAL_Pheno5_EUR.tsv.gz
+Heart/Data/1000g_b38_snpIDs.txt
+```
+
+Script:
 
 ```bash
 python3 Analysis_code/HERMES/1_liftover_hermes_gwas.py
 ```
 
-Expected output:
+Output:
 
 ```text
 Heart/HERMES/HERMES2_GWAS_DCM_EUR/FORMAT-METAL_Pheno5_EUR_hg38_rsid.tsv.gz
 ```
 
-### 2. Prepare HERMES PWAS input
+#### 2. Prepare HERMES PWAS input
+
+Input:
+
+```text
+Heart/HERMES/HERMES2_GWAS_DCM_EUR/FORMAT-METAL_Pheno5_EUR_hg38_rsid.tsv.gz
+Results/heart_protein_weights/training_model_weights/weights_heart_protein_cardiomyocytes_other_moderate_100kb_r2_0.99_alpha0.5_lambdamin.csv
+```
+
+Script:
 
 ```bash
 Rscript Analysis_code/HERMES/2_HERMES_prepare_data_pwas.R
 ```
 
-This creates:
+Output:
 
 ```text
-Results/hermes_pwas/hermes_workspace/hermes_input
-Results/hermes_pwas/hermes_workspace/hermes_filtered_id
+Results/hermes_pwas/hermes_workspace_moderate_100kb_r2_0.99_alpha0.5_lambdamin/hermes_input/chr{1..22}_mw_gwas_input_hermes_pwas.rds
+Results/hermes_pwas/hermes_workspace_moderate_100kb_r2_0.99_alpha0.5_lambdamin/hermes_filtered_id/hermes_filtered_chr{1..22}_gwas_id_pwas.txt
 ```
 
-### 3. Extract 1000Genome EUR LD reference SNPs
+The RDS files contain the matched heart-protein weights and GWAS rows. The TXT
+files contain SNP IDs used by step 3 to extract 1000 Genomes reference dosage.
 
-Set PLINK paths/environments if needed, then run:
+#### 3. Extract 1000 Genomes EUR reference SNPs
+
+Input:
+
+```text
+Results/hermes_pwas/hermes_workspace_moderate_100kb_r2_0.99_alpha0.5_lambdamin/hermes_filtered_id/hermes_filtered_chr{1..22}_gwas_id_pwas.txt
+Data/plink_snplist_by_gene/chr{1..22}_hg38.pgen/.pvar/.psam
+Data/1000Genome/eur_ids.txt
+```
+
+Script:
 
 ```bash
-PWAS_PLINK2_ENV=plink2 \
-PLINK2_BIN=plink2 \
-PLINK_BIN=plink \
 bash Analysis_code/HERMES/3_1000Genome_keep_eur_plink_hermes_pwas.sh
 ```
 
-### 4. Run HERMES PWAS/S-MiXcan association
+Output:
+
+```text
+Results/hermes_pwas/hermes_workspace_moderate_100kb_r2_0.99_alpha0.5_lambdamin/hermes_filtered_id/filtered_chr{1..22}_hg38_hermes_pwas.bed/.bim/.fam
+Results/hermes_pwas/hermes_workspace_moderate_100kb_r2_0.99_alpha0.5_lambdamin/hermes_filtered_id/filtered_chr{1..22}_hg38_012_hermes_pwas.raw
+```
+
+The `.raw` files are additive 0/1/2 reference dosages used by step 4.
+
+#### 4. Run HERMES PWAS/S-MiXcan association
+
+Input:
+
+```text
+Results/hermes_pwas/hermes_workspace_moderate_100kb_r2_0.99_alpha0.5_lambdamin/hermes_input/chr{1..22}_mw_gwas_input_hermes_pwas.rds
+Results/hermes_pwas/hermes_workspace_moderate_100kb_r2_0.99_alpha0.5_lambdamin/hermes_filtered_id/filtered_chr{1..22}_hg38_hermes_pwas.bim
+Results/hermes_pwas/hermes_workspace_moderate_100kb_r2_0.99_alpha0.5_lambdamin/hermes_filtered_id/filtered_chr{1..22}_hg38_012_hermes_pwas.raw
+```
+
+Script:
 
 ```bash
 Rscript Analysis_code/HERMES/4_HERMES_run_analysis_pwas.R
 ```
 
-Defaults:
+Current settings:
 
 ```text
-HERMES_N_CASES=14256
-HERMES_N_CONTROLS=1199156
-HERMES_GWAS_FAMILY=binomial
-HERMES_ASSOC_REG_MODE=fixed
-HERMES_ASSOC_REG_SCALE=0.1
+cases = 14256
+controls = 1199156
+GWAS family = binomial
+regularization = fixed, scale 0.005
 ```
 
-`HERMES_ASSOC_REG_MODE` supports `fixed` and `estimate`. Estimate-mode internal
-defaults are handled by the `SMiXcan` package function.
+Output:
 
-### 5. Run Primo pattern annotation
+```text
+Results/hermes_pwas/hermes_workspace_moderate_100kb_r2_0.99_alpha0.5_lambdamin/hermes_result/hermes_chr{1..22}_result_pwas.csv
+Results/hermes_pwas/hermes_workspace_moderate_100kb_r2_0.99_alpha0.5_lambdamin/hermes_result/hermes_result_pwas.csv
+```
+
+#### 5. Run Primo pattern annotation
+
+Input:
+
+```text
+Results/hermes_pwas/hermes_workspace_moderate_100kb_r2_0.99_alpha0.5_lambdamin/hermes_result/hermes_result_pwas.csv
+Data/ensembl38.txt
+```
+
+Script:
 
 ```bash
 Rscript Analysis_code/HERMES/5_run_Primo_hermes_pwas.R
 ```
 
-### 6. Plot HERMES PWAS results
+Output:
+
+```text
+Results/hermes_pwas/hermes_workspace_moderate_100kb_r2_0.99_alpha0.5_lambdamin/hermes_result/hermes_result_pwas_fixed_0p005_annotated.csv
+Results/hermes_pwas/hermes_workspace_moderate_100kb_r2_0.99_alpha0.5_lambdamin/hermes_result/hermes_table_pwas_fixed_0p005.csv
+```
+
+#### 6. Plot HERMES PWAS results
+
+Input:
+
+```text
+Results/hermes_pwas/hermes_workspace_moderate_100kb_r2_0.99_alpha0.5_lambdamin/hermes_result/hermes_result_pwas.csv
+Results/hermes_pwas/hermes_workspace_moderate_100kb_r2_0.99_alpha0.5_lambdamin/hermes_result/hermes_result_pwas_fixed_0p005_annotated.csv
+```
+
+Script:
 
 ```bash
 Rscript Analysis_code/HERMES/6_plot_hermes_pwas.R
 ```
 
-## Notes
-
-- This workflow uses the existing PWAS training weights by default:
+Output:
 
 ```text
-Results/heart_protein_weights/training_model_weights/weights_heart_protein_cardiomyocytes_other.csv
+Figure/hermes_pwas_moderate_100kb_r2_0.99_alpha0.5_lambdamin/HERMES_PWAS_fixed_0p005_QQ.pdf
+Figure/hermes_pwas_moderate_100kb_r2_0.99_alpha0.5_lambdamin/HERMES_PWAS_fixed_0p005_QQ_split_venn.pdf
 ```
 
-- To use a new retrained PWAS weight table, set:
+### Option B. Run the full workflow with one script
 
 ```bash
-PWAS_WEIGHTS_FILE=/path/to/new_weights.csv
+bash Analysis_code/HERMES/run_HERMES_analysis.sh
 ```
 
-- To run a subset of chromosomes for testing, set:
+The current wrapper runs steps 4-6 only. Use it after steps 1-3 have already
+created the lifted GWAS, matched input RDS files, and 1000 Genomes reference
+dosage files.
+
+## Notes
+
+- This workflow uses these heart-protein weights:
+
+```text
+Results/heart_protein_weights/training_model_weights/weights_heart_protein_cardiomyocytes_other_moderate_100kb_r2_0.99_alpha0.5_lambdamin.csv
+```
+
+- To run one chromosome for testing:
 
 ```bash
-HERMES_CHR_LIST=1
+Rscript Analysis_code/HERMES/4_HERMES_run_analysis_pwas.R 1
 ```
