@@ -34,5 +34,5 @@ Training settings from the runner:
 - Lambda choice: `lambda.min`
 - Output suffix: `_moderate_100kb_r2_0.99_alpha0.5_lambdamin`
 
-HERMES and HEARTFAIL prepare scripts now default to this moderate weights file.
+HERMES and HERMES_HF prepare scripts now default to this moderate weights file.
 Set `PWAS_WEIGHTS_FILE` only when intentionally testing a different weights file.

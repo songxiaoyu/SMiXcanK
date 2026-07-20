@@ -2,8 +2,8 @@
 
 Last updated: 2026-06-29
 
-This document summarizes the analysis history from the original breast
-2CellTypes/3CellTypes S-MiXcan workflows through the newer heart PWAS,
+This document summarizes the analysis history from the original Breast BCAC
+two- and three-cell-type S-MiXcan workflows through the newer heart PWAS,
 CARDMPRI, HERMES, and diagnostic experiments. It is written as a handoff report
 for another agent or analyst to continue debugging why some heart PWAS analyses
 produce few or no significant genes.
@@ -13,7 +13,7 @@ produce few or no significant genes.
 The central question is:
 
 Why do the heart PWAS analyses produce zero or very few significant genes, while
-the older breast 2CellTypes/3CellTypes workflows produce clear signals?
+the older Breast BCAC two- and three-cell-type workflows produce clear signals?
 
 Working hypotheses considered so far:
 
@@ -35,11 +35,11 @@ Repository root:
 Important code folders:
 
 ```text
-Analysis_code/2CellTypes
-Analysis_code/3CellTypes
+Analysis_code/Breast_BCAC_2CellTypes
+Analysis_code/Breast_BCAC_3CellTypes
 Analysis_code/Heart_Protein_Weights
 Analysis_code/HERMES
-Analysis_code/pwas_experiment2
+Analysis_code/HERMES_HF
 ```
 
 Important output roots:
@@ -49,13 +49,13 @@ Important output roots:
 /Users/zhusinan/Library/CloudStorage/Dropbox/Paper_SMiXcan/Figure
 ```
 
-## 3. Original Breast 2CellTypes / 3CellTypes Results
+## 3. Original Breast BCAC Two- and Three-Cell-Type Results
 
 These workflows use breast cell-type training weights and BCAC GWAS summary
 statistics. They are the positive-control analyses because they have strong
 signals.
 
-### 3.1 2CellTypes BCAC
+### 3.1 Breast BCAC 2-cell-type
 
 Result file:
 
@@ -90,7 +90,7 @@ ENSG00000072134.15 chr17  4                4.43e-48
 ENSG00000139323.13 chr12  11               2.45e-32
 ```
 
-### 3.2 3CellTypes BCAC
+### 3.2 Breast BCAC 3-cell-type
 
 Result file:
 
@@ -582,7 +582,7 @@ HTRA1     chr10  18            9.64e-07   0.00573
 Interpretation:
 
 With the original sparse PWAS weights, BCAC still gives one significant gene, but
-far fewer signals than the original breast 2CellTypes/3CellTypes models. This
+far fewer signals than the original Breast BCAC two- and three-cell-type models. This
 suggests both factors matter:
 
 1. BCAC is a stronger GWAS than heart GWAS.
@@ -596,8 +596,8 @@ Key comparison:
 
 ```text
 Analysis                  median SNP   FDR<0.05   Bonf<0.05
-2CellTypes BCAC           8            49         32
-3CellTypes BCAC           8            24         17
+Breast BCAC 2-cell-type           8            49         32
+Breast BCAC 3-cell-type           8            24         17
 PWAS CARDMPRI sparse      1            0          0
 HERMES sparse             1            0          0
 PWAS weights + BCAC       1            1          1
@@ -727,11 +727,11 @@ R/                      package source
 man/                    package documentation
 data/                   example datasets
 Analysis_code/          analysis workflows
-  2CellTypes/
-  3CellTypes/
+  Breast_BCAC_2CellTypes/
+  Breast_BCAC_3CellTypes/
   Heart_Protein_Weights/
   HERMES/
-  HEARTFAIL/
+  HERMES_HF/
 ```
 
 The package-level `SMiXcan_assoc_test_K()` was updated. The workflow scripts now

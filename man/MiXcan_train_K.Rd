@@ -12,7 +12,8 @@ MiXcan_train_K(
   xNameMatrix = NULL,
   yName = NULL,
   foldid = NULL,
-  alpha = 0.5
+  alpha = 0.5,
+  lambda_choice = c("1se", "min")
 )
 }
 \arguments{
@@ -39,6 +40,10 @@ If \code{NULL}, generic names \code{"SNP1", ..., "SNPp"} are used.}
 
 \item{alpha}{Elastic-net mixing parameter passed to \code{glmnet}.
 Default: \code{0.5}.}
+
+\item{lambda_choice}{Character string specifying which cross-validated
+glmnet lambda to use. Use \code{"1se"} for \code{lambda.1se} or
+\code{"min"} for \code{lambda.min}. Default: \code{"1se"}.}
 }
 \value{
 A list with components:
@@ -54,6 +59,12 @@ This is the matrix used directly in \code{SMiXcan_assoc_test_K()}.}
 \item{glmnet.cell}{Fitted glmnet object for the K-cell model.}
 \item{glmnet.tissue}{Fitted glmnet object for the tissue-level model
 (ignoring cell-type composition).}
+\item{lambda_cell}{Selected lambda for the K-cell model.}
+\item{lambda_tissue}{Selected lambda for the tissue-level model.}
+\item{cv_mse_cell}{Cross-validated MSE at \code{lambda_cell}.}
+\item{cv_mse_tissue}{Cross-validated MSE at \code{lambda_tissue}.}
+\item{cv_r2_cell}{Cross-validated R-squared at \code{lambda_cell}.}
+\item{cv_r2_tissue}{Cross-validated R-squared at \code{lambda_tissue}.}
 \item{yName}{Returned gene annotation.}
 \item{xNameMatrix}{Returned SNP annotation.}
 }

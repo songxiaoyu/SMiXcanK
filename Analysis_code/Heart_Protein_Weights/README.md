@@ -1,7 +1,7 @@
 # Heart Protein Weights Training
 
 This folder trains GTEx heart protein prediction weights for downstream
-PWAS/S-MiXcan analyses, including HERMES DCM, HERMES HFpEF, and HEARTFAIL.
+PWAS/S-MiXcan analyses, including HERMES DCM and HERMES HF.
 
 The retained model predicts heart protein abundance using two components:
 
@@ -181,8 +181,7 @@ These workflows default to the retained weights file:
 
 ```text
 Analysis_code/HERMES
-Analysis_code/HERMES_HFpEF
-Analysis_code/HEARTFAIL
+Analysis_code/HERMES_HF
 ```
 
 The default file used downstream is:

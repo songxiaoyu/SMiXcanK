@@ -28,7 +28,6 @@
 
 library(data.table)
 library(dplyr)
-library(readr)
 library(stringr)
 library(tibble)
 library(SMiXcan)
@@ -75,7 +74,12 @@ geno_raw_dir <- Sys.getenv(
   unset = file.path(paper_dir, "New generated files", "codes", "by_chr_nomiss")
 )
 chr_filter <- Sys.getenv("PWAS_CHR_FILTER", unset = "")
-output_suffix <- Sys.getenv("PWAS_OUTPUT_SUFFIX", unset = "_unpruned_nomiss")
+output_suffix <- Sys.getenv("PWAS_OUTPUT_SUFFIX", unset = "_unpruned_nomiss_with_intercepts")
+output_prefix <- Sys.getenv(
+  "PWAS_OUTPUT_PREFIX",
+  unset = "_moderate_100kb_r2_0.99_alpha0.5_lambdamin_with_intercepts"
+)
+combine_only <- Sys.getenv("PWAS_COMBINE_ONLY", unset = "0") == "1"
 max_proteins <- as.integer(Sys.getenv("PWAS_MAX_PROTEINS", unset = "0"))
 weight_eps <- as.numeric(Sys.getenv("PWAS_WEIGHT_EPS", unset = "1e-8"))
 mixcan_alpha <- as.numeric(Sys.getenv("PWAS_MIXCAN_ALPHA", unset = "0.5"))
@@ -85,6 +89,127 @@ if (!lambda_choice %in% c("1se", "min")) {
 }
 
 dir.create(results_dir, recursive = TRUE, showWarnings = FALSE)
+
+combine_chromosome_outputs <- function(results_dir, output_prefix, chr_list) {
+  weight_files <- file.path(
+    results_dir,
+    sprintf("weights_heart_protein_cardiomyocytes_other%s_chr%d.csv",
+            output_prefix, chr_list)
+  )
+  skipped_files <- file.path(
+    results_dir,
+    sprintf("weights_heart_protein_cardiomyocytes_other_skipped%s_chr%d.csv",
+            output_prefix, chr_list)
+  )
+  intercept_files <- file.path(
+    results_dir,
+    sprintf("intercepts_heart_protein_cardiomyocytes_other%s_chr%d.csv",
+            output_prefix, chr_list)
+  )
+  tissue_weight_files <- file.path(
+    results_dir,
+    sprintf("predixcan_tissue_weights_heart_protein%s_chr%d.csv",
+            output_prefix, chr_list)
+  )
+  model_term_files <- file.path(
+    results_dir,
+    sprintf("model_terms_heart_protein_cardiomyocytes_other%s_chr%d.csv",
+            output_prefix, chr_list)
+  )
+
+  existing_weight_files <- weight_files[file.exists(weight_files)]
+  existing_skipped_files <- skipped_files[file.exists(skipped_files)]
+  existing_intercept_files <- intercept_files[file.exists(intercept_files)]
+  existing_tissue_weight_files <- tissue_weight_files[file.exists(tissue_weight_files)]
+  existing_model_term_files <- model_term_files[file.exists(model_term_files)]
+
+  if (!length(existing_weight_files)) {
+    stop("No per-chromosome weight files found for prefix: ", output_prefix,
+         call. = FALSE)
+  }
+  if (length(existing_intercept_files) != length(existing_weight_files)) {
+    stop("Weight/intercept chromosome file count mismatch.", call. = FALSE)
+  }
+  if (length(existing_tissue_weight_files) != length(existing_weight_files)) {
+    stop("Weight/PrediXcan tissue-weight chromosome file count mismatch.",
+         call. = FALSE)
+  }
+  if (length(existing_model_term_files) != length(existing_weight_files)) {
+    stop("Weight/model-term chromosome file count mismatch.", call. = FALSE)
+  }
+
+  weights <- bind_rows(lapply(existing_weight_files, fread))
+  intercepts <- bind_rows(lapply(existing_intercept_files, fread))
+  tissue_weights <- bind_rows(lapply(existing_tissue_weight_files, fread))
+  model_terms <- bind_rows(lapply(existing_model_term_files, fread))
+  skipped <- bind_rows(lapply(existing_skipped_files, function(path) {
+    if (file.info(path)$size == 0) {
+      return(data.frame())
+    }
+    fread(path)
+  }))
+
+  weights_out <- file.path(
+    results_dir,
+    paste0("weights_heart_protein_cardiomyocytes_other", output_prefix, ".csv")
+  )
+  skipped_out <- file.path(
+    results_dir,
+    paste0("weights_heart_protein_cardiomyocytes_other_skipped",
+           output_prefix, ".csv")
+  )
+  intercepts_out <- file.path(
+    results_dir,
+    paste0("intercepts_heart_protein_cardiomyocytes_other",
+           output_prefix, ".csv")
+  )
+  tissue_weights_out <- file.path(
+    results_dir,
+    paste0("predixcan_tissue_weights_heart_protein", output_prefix, ".csv")
+  )
+  model_terms_out <- file.path(
+    results_dir,
+    paste0("model_terms_heart_protein_cardiomyocytes_other",
+           output_prefix, ".csv")
+  )
+
+  fwrite(weights, weights_out)
+  fwrite(intercepts, intercepts_out)
+  fwrite(tissue_weights, tissue_weights_out)
+  fwrite(model_terms, model_terms_out)
+  fwrite(skipped, skipped_out)
+
+  snp_per_gene <- table(weights$gene_id)
+
+  cat("Combined chromosome weight files:", length(existing_weight_files), "\n")
+  cat("Combined chromosome intercept files:", length(existing_intercept_files), "\n")
+  cat("Combined chromosome PrediXcan tissue-weight files:",
+      length(existing_tissue_weight_files), "\n")
+  cat("Combined chromosome model-term files:", length(existing_model_term_files), "\n")
+  cat("Rows:", nrow(weights), "\n")
+  cat("Genes:", length(unique(weights$gene_id)), "\n")
+  cat("Median SNP rows per gene:", median(snp_per_gene), "\n")
+  cat("Mean SNP rows per gene:", mean(snp_per_gene), "\n")
+  cat("Genes with 1 SNP:", sum(snp_per_gene == 1), "\n")
+  cat("Genes with >=5 SNP:", sum(snp_per_gene >= 5), "\n")
+  cat("Genes with >=10 SNP:", sum(snp_per_gene >= 10), "\n")
+  cat("Saved weights:", weights_out, "\n")
+  cat("Saved intercepts:", intercepts_out, "\n")
+  cat("Saved PrediXcan tissue weights:", tissue_weights_out, "\n")
+  cat("Saved model terms:", model_terms_out, "\n")
+  cat("Saved skipped:", skipped_out, "\n")
+}
+
+if (combine_only) {
+  chr_list <- as.integer(strsplit(
+    Sys.getenv("PWAS_CHR_LIST", unset = paste(1:22, collapse = ",")),
+    ",",
+    fixed = TRUE
+  )[[1]])
+  chr_list <- chr_list[!is.na(chr_list)]
+  combine_chromosome_outputs(results_dir, output_prefix, chr_list)
+  quit(save = "no", status = 0)
+}
 
 # ------------------------------------------------------------------------------
 # Step 2. Define helper functions
@@ -509,6 +634,229 @@ combine_weights <- function(fit, snp_annot, target, cell_type_cols) {
   out
 }
 
+combine_tissue_weights <- function(fit, snp_annot, target) {
+  beta_all <- fit$beta.all.models
+  missing_cols <- setdiff("Tissue", colnames(beta_all))
+  if (length(missing_cols)) {
+    stop("Missing Tissue column in beta.all.models.", call. = FALSE)
+  }
+  tissue_weights <- data.frame(
+    varID = rownames(beta_all),
+    weight_tissue = as.numeric(beta_all[, "Tissue"]),
+    stringsAsFactors = FALSE
+  )
+  tissue_weights <- tissue_weights[
+    tissue_weights$varID %in% snp_annot$varID,
+    ,
+    drop = FALSE
+  ]
+
+  out <- snp_annot %>%
+    select(varID, chr, pos, ref_allele, eff_allele, dosed_allele) %>%
+    left_join(tissue_weights, by = "varID") %>%
+    mutate(
+      gene_id = target$gene_id,
+      gene_name = target$gene_name,
+      type = "PrediXcan"
+    ) %>%
+    select(
+      gene_id, gene_name, varID, chr, pos, ref_allele, eff_allele,
+      dosed_allele, weight_tissue, type
+    )
+  out
+}
+
+extract_intercepts <- function(fit, target, cell_type_cols) {
+  intercept_idx <- match("Intercept", rownames(fit$beta.all.models))
+  if (is.na(intercept_idx)) {
+    intercept_idx <- 1L
+  }
+  intercept_row <- fit$beta.all.models[intercept_idx, , drop = FALSE]
+  cell_cols <- paste0("Cell", seq_along(cell_type_cols))
+  missing_cols <- setdiff(c("Tissue", cell_cols), colnames(intercept_row))
+  if (length(missing_cols)) {
+    stop("Missing intercept columns in beta.all.models: ",
+         paste(missing_cols, collapse = ", "))
+  }
+  out <- data.frame(
+    gene_id = target$gene_id,
+    gene_name = target$gene_name,
+    chr = target$chr,
+    type = fit$type,
+    intercept_tissue = as.numeric(intercept_row[, "Tissue"]),
+    stringsAsFactors = FALSE
+  )
+  for (k in seq_along(cell_type_cols)) {
+    out[[paste0("intercept_", make_clean_names(cell_type_cols[k]))]] <-
+      as.numeric(intercept_row[, cell_cols[k]])
+  }
+  out
+}
+
+intercepts_as_model_terms <- function(intercepts, cell_type_cols) {
+  weight_cols <- paste0("weight_", make_clean_names(cell_type_cols))
+  out <- data.frame(
+    gene_id = intercepts$gene_id,
+    gene_name = intercepts$gene_name,
+    term_type = "intercept",
+    varID = "Intercept",
+    chr = intercepts$chr,
+    pos = NA_integer_,
+    ref_allele = NA_character_,
+    eff_allele = NA_character_,
+    dosed_allele = NA_character_,
+    type = intercepts$type,
+    stringsAsFactors = FALSE
+  )
+  for (k in seq_along(cell_type_cols)) {
+    out[[weight_cols[k]]] <- intercepts[[paste0("intercept_", make_clean_names(cell_type_cols[k]))]]
+  }
+  out[, c("gene_id", "gene_name", "term_type", "varID", "chr", "pos",
+          "ref_allele", "eff_allele", "dosed_allele", weight_cols, "type")]
+}
+
+# Local variant of SMiXcan::MiXcan_train_K that can use lambda.min instead of
+# the package default lambda.1se. This is useful for parameter diagnostics when
+# lambda.1se makes the trained PWAS weights too sparse.
+MiXcan_train_K_select_lambda <- function(y, x, cov = NULL, pi_k, xNameMatrix = NULL,
+                                         yName = NULL, foldid = NULL, alpha = 0.5,
+                                         lambda_choice = "1se") {
+  y <- as.matrix(y)
+  x <- as.matrix(x)
+  pi_k <- as.matrix(pi_k)
+  n <- nrow(x)
+  p <- ncol(x)
+  K <- ncol(pi_k)
+  if (nrow(pi_k) != n) {
+    stop("pi_k must have the same number of rows as x (samples).")
+  }
+  if (is.null(xNameMatrix)) {
+    if (!is.null(colnames(x))) {
+      xNameMatrix <- data.frame(SNP = colnames(x), stringsAsFactors = FALSE)
+    } else {
+      xNameMatrix <- data.frame(SNP = paste0("SNP", seq_len(p)), stringsAsFactors = FALSE)
+    }
+  }
+  if (is.null(foldid)) {
+    set.seed(1L)
+    foldid <- sample(1:10, n, replace = TRUE)
+  }
+
+  pick_lambda <- function(cv_fit) {
+    if (lambda_choice == "min") cv_fit$lambda.min else cv_fit$lambda.1se
+  }
+  cv_mse_at_lambda <- function(cv_fit, lambda_value) {
+    idx <- which.min(abs(log(cv_fit$lambda) - log(lambda_value)))
+    cv_fit$cvm[idx]
+  }
+  cv_r2_at_lambda <- function(cv_fit, lambda_value, y_centered) {
+    y_var <- mean(as.numeric(y_centered)^2)
+    if (is.na(y_var) || y_var <= 0) {
+      return(NA_real_)
+    }
+    1 - cv_mse_at_lambda(cv_fit, lambda_value) / y_var
+  }
+
+  y <- scale(y, center = TRUE, scale = FALSE)
+  x <- scale(x, center = TRUE, scale = FALSE)
+  if (is.null(cov)) {
+    xcov <- x
+    pcov <- 0L
+  } else {
+    cov <- as.matrix(cov)
+    cov <- scale(cov, center = TRUE, scale = FALSE)
+    pcov <- ncol(cov)
+    xcov <- cbind(x, cov)
+  }
+
+  ft00 <- glmnet::cv.glmnet(x = xcov, y = y, family = "gaussian",
+                            foldid = foldid, alpha = alpha)
+  lambda_tissue <- pick_lambda(ft00)
+  ft0 <- glmnet::glmnet(x = xcov, y = y, family = "gaussian",
+                        lambda = lambda_tissue, alpha = alpha)
+  est.tissue <- c(ft0$a0, as.numeric(ft0$beta))
+
+  C <- stats::contr.helmert(K)
+  c_mat <- pi_k %*% C
+  Z_list <- vector("list", length = K - 1L)
+  for (m in seq_len(K - 1L)) {
+    Z_list[[m]] <- c_mat[, m] * x
+  }
+  Z_block <- do.call(cbind, Z_list)
+  if (is.null(cov)) {
+    XX <- cbind(c_mat, x, Z_block)
+  } else {
+    XX <- cbind(c_mat, x, Z_block, cov)
+  }
+
+  n_c <- K - 1L
+  n_Z <- p * (K - 1L)
+  penalty.factor <- c(rep(0, n_c), rep(1, p + n_Z + pcov))
+  ft11 <- glmnet::cv.glmnet(x = XX, y = y, family = "gaussian",
+                            foldid = foldid, alpha = alpha,
+                            penalty.factor = penalty.factor)
+  lambda_cell <- pick_lambda(ft11)
+  ft <- glmnet::glmnet(x = XX, y = y, family = "gaussian",
+                       lambda = lambda_cell, alpha = alpha,
+                       penalty.factor = penalty.factor)
+  est <- c(ft$a0, as.numeric(ft$beta))
+
+  idx_c <- 1:n_c
+  idx_barb <- (n_c + 1):(n_c + p)
+  idx_Z <- (n_c + p + 1):(n_c + p + n_Z)
+  idx_cov <- if (pcov > 0L) (length(est) - pcov + 1):length(est) else integer(0)
+
+  alpha_vec <- est[idx_c]
+  b_bar <- est[idx_barb]
+  d_mat <- matrix(est[idx_Z], nrow = p, ncol = K - 1L, byrow = FALSE)
+  a_cell <- as.numeric(ft$a0 + C %*% alpha_vec)
+  B_mat <- matrix(NA_real_, nrow = p, ncol = K)
+  for (k in seq_len(K)) {
+    B_mat[, k] <- b_bar + d_mat %*% C[k, ]
+  }
+  colnames(B_mat) <- paste0("Cell", seq_len(K))
+  rownames(B_mat) <- xNameMatrix[[1]]
+
+  if (suppressWarnings(all(d_mat == 0))) {
+    Type <- if (suppressWarnings(all(b_bar == 0))) "NoPredictor" else "NonSpecific"
+  } else {
+    Type <- "CellTypeSpecific"
+  }
+
+  beta.SNP.by.cell <- vector("list", length = K)
+  for (k in seq_len(K)) {
+    beta.SNP.by.cell[[k]] <- data.frame(weight = B_mat[, k], stringsAsFactors = FALSE)
+    rownames(beta.SNP.by.cell[[k]]) <- rownames(B_mat)
+  }
+  names(beta.SNP.by.cell) <- paste0("Cell", seq_len(K))
+
+  n_rows <- 1 + p + pcov
+  beta_cell_mat <- matrix(NA_real_, nrow = n_rows, ncol = K)
+  rownames(beta_cell_mat) <- c("Intercept", xNameMatrix[[1]],
+                              if (pcov > 0) paste0("cov", seq_len(pcov)) else NULL)
+  colnames(beta_cell_mat) <- paste0("Cell", seq_len(K))
+  for (k in seq_len(K)) {
+    beta_cell_mat[1, k] <- a_cell[k]
+    beta_cell_mat[1 + (1:p), k] <- B_mat[, k]
+    if (pcov > 0L) {
+      beta_cell_mat[1 + p + (1:pcov), k] <- if (length(idx_cov) > 0L) est[idx_cov] else 0
+    }
+  }
+  beta_all_models <- cbind(Tissue = est.tissue, beta_cell_mat)
+  rownames(beta_all_models) <- rownames(beta_cell_mat)
+
+  list(type = Type, beta.SNP.by.cell = beta.SNP.by.cell,
+       beta.all.models = beta_all_models, W = B_mat,
+       glmnet.cell = ft, glmnet.tissue = ft0, yName = yName,
+       xNameMatrix = xNameMatrix,
+       lambda_cell = lambda_cell,
+       lambda_tissue = lambda_tissue,
+       cv_mse_cell = cv_mse_at_lambda(ft11, lambda_cell),
+       cv_mse_tissue = cv_mse_at_lambda(ft00, lambda_tissue),
+       cv_r2_cell = cv_r2_at_lambda(ft11, lambda_cell, y),
+       cv_r2_tissue = cv_r2_at_lambda(ft00, lambda_tissue, y))
+}
+
 # ------------------------------------------------------------------------------
 # Step 3. Load protein, cell-fraction, covariate, and EA-sample inputs
 # ------------------------------------------------------------------------------
@@ -609,6 +957,8 @@ if (!is.na(max_proteins) && max_proteins > 0) {
 # ------------------------------------------------------------------------------
 
 res_weights_all <- vector("list", nrow(protein_ann))
+res_intercepts_all <- vector("list", nrow(protein_ann))
+res_tissue_weights_all <- vector("list", nrow(protein_ann))
 skipped <- list()
 diagnostics <- list()
 
@@ -733,7 +1083,7 @@ for (j in seq_len(nrow(protein_ann))) {
   # Fit the two-component MiXcan model. Errors are logged per protein so one
   # failed fit does not stop training for the remaining proteins.
   fit <- tryCatch(
-    SMiXcan::MiXcan_train_K(
+    MiXcan_train_K_select_lambda(
       y = y,
       x = x,
       pi_k = pi_k,
@@ -757,6 +1107,9 @@ for (j in seq_len(nrow(protein_ann))) {
     next
   }
 
+  intercepts <- extract_intercepts(fit, target, cell_type_cols)
+  res_intercepts_all[[j]] <- intercepts
+
   # Save only SNPs with at least one meaningfully nonzero cell-component weight.
   # glmnet can return tiny numerical values around 1e-16, which should not be
   # counted as real selected SNP weights.
@@ -766,6 +1119,17 @@ for (j in seq_len(nrow(protein_ann))) {
   if (nrow(weights)) {
     res_weights_all[[j]] <- weights
   }
+
+  tissue_weights <- combine_tissue_weights(fit, snp_annot, target)
+  tissue_weights <- tissue_weights[
+    abs(tissue_weights$weight_tissue) > weight_eps,
+    ,
+    drop = FALSE
+  ]
+  if (nrow(tissue_weights)) {
+    res_tissue_weights_all[[j]] <- tissue_weights
+  }
+
   diagnostics[[length(diagnostics) + 1L]] <- data.frame(
     gene_id = target$gene_id,
     gene_name = target$gene_name,
@@ -799,31 +1163,56 @@ weights_file <- file.path(
   results_dir,
   paste0("weights_heart_protein_cardiomyocytes_other", output_suffix, ".csv")
 )
-write_csv(
-  weights_final,
-  weights_file
+fwrite(weights_final, weights_file)
+
+tissue_weights_final <- bind_rows(res_tissue_weights_all)
+tissue_weights_file <- file.path(
+  results_dir,
+  paste0("predixcan_tissue_weights_heart_protein", output_suffix, ".csv")
 )
+fwrite(tissue_weights_final, tissue_weights_file)
+
+intercepts_final <- bind_rows(res_intercepts_all)
+intercepts_file <- file.path(
+  results_dir,
+  paste0("intercepts_heart_protein_cardiomyocytes_other", output_suffix, ".csv")
+)
+fwrite(intercepts_final, intercepts_file)
+
+weight_cols <- paste0("weight_", make_clean_names(cell_type_cols))
+snp_terms_final <- weights_final %>%
+  mutate(term_type = "snp") %>%
+  select(
+    gene_id, gene_name, term_type, varID, chr, pos, ref_allele, eff_allele,
+    dosed_allele, all_of(weight_cols), type
+  )
+model_terms_final <- bind_rows(
+  intercepts_as_model_terms(intercepts_final, cell_type_cols),
+  snp_terms_final
+)
+model_terms_file <- file.path(
+  results_dir,
+  paste0("model_terms_heart_protein_cardiomyocytes_other", output_suffix, ".csv")
+)
+fwrite(model_terms_final, model_terms_file)
 
 skipped_final <- bind_rows(skipped)
 skipped_file <- file.path(
   results_dir,
   paste0("weights_heart_protein_cardiomyocytes_other_skipped", output_suffix, ".csv")
 )
-write_csv(
-  skipped_final,
-  skipped_file
-)
+fwrite(skipped_final, skipped_file)
 
 diagnostics_final <- bind_rows(diagnostics)
 diagnostics_file <- file.path(
   results_dir,
   paste0("weights_heart_protein_cardiomyocytes_other_diagnostics", output_suffix, ".csv")
 )
-write_csv(
-  diagnostics_final,
-  diagnostics_file
-)
+fwrite(diagnostics_final, diagnostics_file)
 
 cat("Saved weights:", weights_file, "\n")
+cat("Saved PrediXcan tissue weights:", tissue_weights_file, "\n")
+cat("Saved intercepts:", intercepts_file, "\n")
+cat("Saved model terms:", model_terms_file, "\n")
 cat("Saved skipped log:", skipped_file, "\n")
 cat("Saved diagnostics:", diagnostics_file, "\n")

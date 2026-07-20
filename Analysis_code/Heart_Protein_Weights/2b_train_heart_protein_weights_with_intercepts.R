@@ -28,7 +28,6 @@
 
 library(data.table)
 library(dplyr)
-library(readr)
 library(stringr)
 library(tibble)
 library(SMiXcan)
@@ -75,7 +74,7 @@ geno_raw_dir <- Sys.getenv(
   unset = file.path(paper_dir, "New generated files", "codes", "by_chr_nomiss")
 )
 chr_filter <- Sys.getenv("PWAS_CHR_FILTER", unset = "")
-output_suffix <- Sys.getenv("PWAS_OUTPUT_SUFFIX", unset = "_unpruned_nomiss")
+output_suffix <- Sys.getenv("PWAS_OUTPUT_SUFFIX", unset = "_unpruned_nomiss_with_intercepts")
 max_proteins <- as.integer(Sys.getenv("PWAS_MAX_PROTEINS", unset = "0"))
 weight_eps <- as.numeric(Sys.getenv("PWAS_WEIGHT_EPS", unset = "1e-8"))
 mixcan_alpha <- as.numeric(Sys.getenv("PWAS_MIXCAN_ALPHA", unset = "0.5"))
@@ -509,6 +508,55 @@ combine_weights <- function(fit, snp_annot, target, cell_type_cols) {
   out
 }
 
+extract_intercepts <- function(fit, target, cell_type_cols) {
+  intercept_idx <- match("Intercept", rownames(fit$beta.all.models))
+  if (is.na(intercept_idx)) {
+    intercept_idx <- 1L
+  }
+  intercept_row <- fit$beta.all.models[intercept_idx, , drop = FALSE]
+  cell_cols <- paste0("Cell", seq_along(cell_type_cols))
+  missing_cols <- setdiff(c("Tissue", cell_cols), colnames(intercept_row))
+  if (length(missing_cols)) {
+    stop("Missing intercept columns in beta.all.models: ",
+         paste(missing_cols, collapse = ", "))
+  }
+  out <- data.frame(
+    gene_id = target$gene_id,
+    gene_name = target$gene_name,
+    chr = target$chr,
+    type = fit$type,
+    intercept_tissue = as.numeric(intercept_row[, "Tissue"]),
+    stringsAsFactors = FALSE
+  )
+  for (k in seq_along(cell_type_cols)) {
+    out[[paste0("intercept_", make_clean_names(cell_type_cols[k]))]] <-
+      as.numeric(intercept_row[, cell_cols[k]])
+  }
+  out
+}
+
+intercepts_as_model_terms <- function(intercepts, cell_type_cols) {
+  weight_cols <- paste0("weight_", make_clean_names(cell_type_cols))
+  out <- data.frame(
+    gene_id = intercepts$gene_id,
+    gene_name = intercepts$gene_name,
+    term_type = "intercept",
+    varID = "Intercept",
+    chr = intercepts$chr,
+    pos = NA_integer_,
+    ref_allele = NA_character_,
+    eff_allele = NA_character_,
+    dosed_allele = NA_character_,
+    type = intercepts$type,
+    stringsAsFactors = FALSE
+  )
+  for (k in seq_along(cell_type_cols)) {
+    out[[weight_cols[k]]] <- intercepts[[paste0("intercept_", make_clean_names(cell_type_cols[k]))]]
+  }
+  out[, c("gene_id", "gene_name", "term_type", "varID", "chr", "pos",
+          "ref_allele", "eff_allele", "dosed_allele", weight_cols, "type")]
+}
+
 # ------------------------------------------------------------------------------
 # Step 3. Load protein, cell-fraction, covariate, and EA-sample inputs
 # ------------------------------------------------------------------------------
@@ -609,6 +657,7 @@ if (!is.na(max_proteins) && max_proteins > 0) {
 # ------------------------------------------------------------------------------
 
 res_weights_all <- vector("list", nrow(protein_ann))
+res_intercepts_all <- vector("list", nrow(protein_ann))
 skipped <- list()
 diagnostics <- list()
 
@@ -757,6 +806,9 @@ for (j in seq_len(nrow(protein_ann))) {
     next
   }
 
+  intercepts <- extract_intercepts(fit, target, cell_type_cols)
+  res_intercepts_all[[j]] <- intercepts
+
   # Save only SNPs with at least one meaningfully nonzero cell-component weight.
   # glmnet can return tiny numerical values around 1e-16, which should not be
   # counted as real selected SNP weights.
@@ -799,31 +851,48 @@ weights_file <- file.path(
   results_dir,
   paste0("weights_heart_protein_cardiomyocytes_other", output_suffix, ".csv")
 )
-write_csv(
-  weights_final,
-  weights_file
+fwrite(weights_final, weights_file)
+
+intercepts_final <- bind_rows(res_intercepts_all)
+intercepts_file <- file.path(
+  results_dir,
+  paste0("intercepts_heart_protein_cardiomyocytes_other", output_suffix, ".csv")
 )
+fwrite(intercepts_final, intercepts_file)
+
+weight_cols <- paste0("weight_", make_clean_names(cell_type_cols))
+snp_terms_final <- weights_final %>%
+  mutate(term_type = "snp") %>%
+  select(
+    gene_id, gene_name, term_type, varID, chr, pos, ref_allele, eff_allele,
+    dosed_allele, all_of(weight_cols), type
+  )
+model_terms_final <- bind_rows(
+  intercepts_as_model_terms(intercepts_final, cell_type_cols),
+  snp_terms_final
+)
+model_terms_file <- file.path(
+  results_dir,
+  paste0("model_terms_heart_protein_cardiomyocytes_other", output_suffix, ".csv")
+)
+fwrite(model_terms_final, model_terms_file)
 
 skipped_final <- bind_rows(skipped)
 skipped_file <- file.path(
   results_dir,
   paste0("weights_heart_protein_cardiomyocytes_other_skipped", output_suffix, ".csv")
 )
-write_csv(
-  skipped_final,
-  skipped_file
-)
+fwrite(skipped_final, skipped_file)
 
 diagnostics_final <- bind_rows(diagnostics)
 diagnostics_file <- file.path(
   results_dir,
   paste0("weights_heart_protein_cardiomyocytes_other_diagnostics", output_suffix, ".csv")
 )
-write_csv(
-  diagnostics_final,
-  diagnostics_file
-)
+fwrite(diagnostics_final, diagnostics_file)
 
 cat("Saved weights:", weights_file, "\n")
+cat("Saved intercepts:", intercepts_file, "\n")
+cat("Saved model terms:", model_terms_file, "\n")
 cat("Saved skipped log:", skipped_file, "\n")
 cat("Saved diagnostics:", diagnostics_file, "\n")

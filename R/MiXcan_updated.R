@@ -10,6 +10,11 @@
 #' @importFrom ACAT ACAT
 #' @export
 safe_ACAT <- function(p_values) {
+  p_values <- as.numeric(p_values)
+  p_values <- p_values[is.finite(p_values) & p_values >= 0 & p_values <= 1]
+  if (length(p_values) == 0L) {
+    return(NA_real_)
+  }
   tryCatch({
     ACAT::ACAT(p_values)
   }, error = function(e) {
@@ -93,7 +98,7 @@ MiXcan_assoc_test <- function(outcome, cell1, cell2, family = 'binomial',
     return(list(
       cell1_est = unname(g1["est"]), cell1_se = unname(g1["se"]), cell1_p = unname(g1["p"]),
       cell2_est = unname(g2["est"]), cell2_se = unname(g2["se"]), cell2_p = unname(g2["p"]),
-      p_combined = p_comb, mode = "separate"
+      p_combined = p_comb, mode = "collinear_separate"
     ))
   }
   Y  <- cbind(1, Ys)                 # n×3 : intercept, Y1, Y2
@@ -122,6 +127,6 @@ MiXcan_assoc_test <- function(outcome, cell1, cell2, family = 'binomial',
   list(
     cell1_est = est1, cell1_se = se1, cell1_p = p1,
     cell2_est = est2, cell2_se = se2, cell2_p = p2,
-    p_combined = p_comb
+    p_combined = p_comb, mode = "joint"
   )
 }

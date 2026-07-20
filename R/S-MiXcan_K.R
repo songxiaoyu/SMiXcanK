@@ -163,25 +163,6 @@ SMiXcan_assoc_test_K <- function(W,
     stop("se_Beta must be positive.")
   }
 
-  keep <- rowSums(abs(W), na.rm = TRUE) > weight_eps
-  if (!any(keep)) {
-    return(list(
-      Z_join = rep(NA_real_, K),
-      p_join_vec = rep(NA_real_, K),
-      p_join = NA_real_,
-      Z_sep = rep(NA_real_, K),
-      p_sep = rep(NA_real_, K),
-      reg_scale_selected = NA_real_,
-      reg_condition = NA_real_,
-      mode = "empty"
-    ))
-  }
-
-  W <- W[keep, , drop = FALSE]
-  x_g <- x_g[, keep, drop = FALSE]
-  Beta <- Beta[keep]
-  se_Beta <- se_Beta[keep]
-
   sig_l <- .smixcan_col_sds(x_g)
   Yhat <- x_g %*% W
   sig2_g <- .smixcan_col_vars(Yhat)
@@ -221,15 +202,22 @@ SMiXcan_assoc_test_K <- function(W,
     }
 
     Z0 <- log(n1 / n0) / sqrt(1 / n1 + 1 / n0)
-    Y_scaled <- scale(Yhat)
-    Y <- cbind(1, Y_scaled)
-    colnames(Y) <- c("Y0", paste0("Y", seq_len(K)))
-    YtY <- crossprod(Y)
-    Omega <- diag(YtY)
-    corY <- stats::cov2cor(YtY)
+    if (all(ok)) {
+      Y_scaled <- scale(Yhat)
+      Y <- cbind(1, Y_scaled)
+      colnames(Y) <- c("Y0", paste0("Y", seq_len(K)))
+      YtY <- crossprod(Y)
+      Omega <- diag(YtY)
+      corY <- stats::cov2cor(YtY)
+    } else {
+      corY <- matrix(NA_real_, nrow = K + 1L, ncol = K + 1L)
+    }
 
-    if (!any(is.na(corY)) &&
-        !any(abs(corY[upper.tri(corY)]) > 0.999999)) {
+    if (any(is.na(corY))) {
+      mode <- "invalid_variance_separate"
+    } else if (any(abs(corY[upper.tri(corY)]) > 0.999999)) {
+      mode <- "collinear_separate"
+    } else {
       reg_scale_selected <- choose_reg_scale(YtY)
       inv <- regularized_inverse_cov(YtY, reg_scale = reg_scale_selected)
       v <- c(sqrt(Omega[1]) * Z0, sqrt(Omega[-1]) * Z_sep)
@@ -240,14 +228,21 @@ SMiXcan_assoc_test_K <- function(W,
       mode <- "joint"
     }
   } else if (family == "gaussian") {
-    Y_scaled <- scale(Yhat)
-    colnames(Y_scaled) <- paste0("Y", seq_len(K))
-    YtY <- crossprod(Y_scaled)
-    Omega <- diag(YtY)
-    corY <- stats::cov2cor(YtY)
+    if (all(ok)) {
+      Y_scaled <- scale(Yhat)
+      colnames(Y_scaled) <- paste0("Y", seq_len(K))
+      YtY <- crossprod(Y_scaled)
+      Omega <- diag(YtY)
+      corY <- stats::cov2cor(YtY)
+    } else {
+      corY <- matrix(NA_real_, nrow = K, ncol = K)
+    }
 
-    if (!any(is.na(corY)) &&
-        !any(abs(corY[upper.tri(corY)]) > 0.999999)) {
+    if (any(is.na(corY))) {
+      mode <- "invalid_variance_separate"
+    } else if (any(abs(corY[upper.tri(corY)]) > 0.999999)) {
+      mode <- "collinear_separate"
+    } else {
       reg_scale_selected <- choose_reg_scale(YtY)
       inv <- regularized_inverse_cov(YtY, reg_scale = reg_scale_selected)
       v <- sqrt(Omega) * Z_sep

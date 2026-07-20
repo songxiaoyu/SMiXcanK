@@ -12,11 +12,11 @@ R/                      R package source code
 man/                    R package documentation
 data/                   Small bundled example datasets
 Analysis_code/          Reproducible analysis workflows
-  2CellTypes/           Breast 2-cell-type workflow
-  3CellTypes/           Breast 3-cell-type workflow
+  Breast_BCAC_2CellTypes/           Breast cancer risk / BCAC 2-cell-type workflow
+  Breast_BCAC_3CellTypes/           Breast cancer risk / BCAC 3-cell-type workflow
   Heart_Protein_Weights/ Heart protein weight training workflow
   HERMES/               HERMES DCM PWAS workflow
-  HEARTFAIL/            HEARTFAIL PWAS workflow
+  HERMES_HF/            HERMES HF PWAS workflow
 ```
 
 Historical experiments, old PWAS scripts, generated results, and previous
@@ -185,23 +185,24 @@ For two cell types, PRIMO classifies non-null patterns such as:
 The `Analysis_code/` folder contains project-specific scripts. These scripts are
 kept in GitHub for reproducibility but are not included in the R package build.
 
-### Breast 2-Cell-Type Workflow
+### Breast Cancer Risk / BCAC 2-Cell-Type Workflow
 
 ```text
-Analysis_code/2CellTypes/
+Analysis_code/Breast_BCAC_2CellTypes/
 ```
 
-This is the original 2-cell-type breast workflow, including model training,
-BCAC GWAS preparation, LD reference extraction, association testing, PRIMO, and
-plotting.
+This is the original two-cell-type breast cancer risk workflow using BCAC GWAS
+summary statistics, including model training, BCAC GWAS preparation, LD
+reference extraction, association testing, PRIMO, and plotting.
 
-### Breast 3-Cell-Type Workflow
+### Breast Cancer Risk / BCAC 3-Cell-Type Workflow
 
 ```text
-Analysis_code/3CellTypes/
+Analysis_code/Breast_BCAC_3CellTypes/
 ```
 
-This is the original 3-cell-type breast workflow.
+This is the original three-cell-type breast cancer risk workflow using BCAC GWAS
+summary statistics.
 
 ### Heart Protein Weight Training
 
@@ -209,8 +210,8 @@ This is the original 3-cell-type breast workflow.
 Analysis_code/Heart_Protein_Weights/
 ```
 
-This folder trains the heart protein prediction weights used by the HERMES and
-HEARTFAIL PWAS workflows. The active weight model is documented in:
+This folder trains the heart protein prediction weights used by the HERMES DCM
+and HERMES HF PWAS workflows. The active weight model is documented in:
 
 ```text
 Analysis_code/Heart_Protein_Weights/CURRENT_WEIGHTS_SOURCE.md
@@ -250,33 +251,39 @@ HERMES_ASSOC_REG_MODE=estimate
 The active step 4 script intentionally keeps only `fixed` and `estimate`
 regularization modes.
 
-### HEARTFAIL PWAS Workflow
+### HERMES HF PWAS Workflow
 
 ```text
-Analysis_code/HEARTFAIL/
+Analysis_code/HERMES_HF/
 ```
 
 Main steps:
 
 ```bash
-python Analysis_code/HEARTFAIL/1_liftover_heartfail_gwas.py
-Rscript Analysis_code/HEARTFAIL/2_HEARTFAIL_prepare_data_pwas.R
-bash Analysis_code/HEARTFAIL/3_1000Genome_keep_eur_plink_heartfail_pwas.sh
-HEARTFAIL_N_CASES=<case_count> HEARTFAIL_N_CONTROLS=<control_count> \
-  Rscript Analysis_code/HEARTFAIL/4_HEARTFAIL_run_analysis_pwas.R
-Rscript Analysis_code/HEARTFAIL/5_run_Primo_heartfail_pwas.R
-Rscript Analysis_code/HEARTFAIL/6_plot_heartfail_pwas.R
+python Analysis_code/HERMES_HF/1_liftover_hermes_hf_gwas.py
+Rscript Analysis_code/HERMES_HF/2_HERMES_HF_prepare_data_pwas.R
+bash Analysis_code/HERMES_HF/3_1000Genome_keep_eur_plink_hermes_hf_pwas.sh
+Rscript Analysis_code/HERMES_HF/4_HERMES_HF_run_analysis_pwas.R
+Rscript Analysis_code/HERMES_HF/5_run_Primo_hermes_hf_pwas.R
+Rscript Analysis_code/HERMES_HF/6_plot_hermes_hf_pwas.R
 ```
 
-HEARTFAIL case/control counts must be set explicitly before step 4 unless the
-script is edited for a specific GWAS release.
+HERMES HF default sample counts:
+
+```text
+HERMES_HF_N_CASES=132176
+HERMES_HF_N_CONTROLS=1553537
+```
 
 Step 4 supports:
 
 ```bash
-HEARTFAIL_ASSOC_REG_MODE=fixed
-HEARTFAIL_ASSOC_REG_MODE=estimate
+HERMES_HF_ASSOC_REG_MODE=fixed
+HERMES_HF_ASSOC_REG_MODE=estimate
 ```
+
+The retained HERMES HF reporting table currently uses fixed regularization
+scale `0.054`.
 
 ## Notes For Development
 

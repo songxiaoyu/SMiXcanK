@@ -4,11 +4,14 @@ This folder contains the analysis scripts used for the `SMiXcan` paper and
 follow-up PWAS workflows. The code is organized into five active workflow
 folders:
 
-- `2CellTypes/`: two-cell-type analysis in breast tissue.
-- `3CellTypes/`: three-cell-type analysis in breast tissue.
+- `Breast_BCAC_2CellTypes/`: breast cancer risk / BCAC two-cell-type workflow.
+- `Breast_BCAC_3CellTypes/`: breast cancer risk / BCAC three-cell-type workflow.
 - `Heart_Protein_Weights/`: heart protein weight training workflow.
 - `HERMES/`: HERMES DCM GWAS PWAS workflow.
-- `HEARTFAIL/`: HEARTFAIL GWAS PWAS workflow.
+- `HERMES_HF/`: HERMES HF GWAS PWAS workflow.
+
+Older exploratory heart PWAS folders and superseded result/figure snapshots have
+been moved outside the GitHub code folder to `Paper_SMiXcan/Archive`.
 
 The scripts were originally written for a project directory with several large
 reference datasets stored outside GitHub. This README explains the intended run
@@ -52,7 +55,7 @@ Paper_SMiXcan/
 │   ├── drive_result_full_lam_new.csv
 │   ├── heart_protein_weights/
 │   ├── hermes_pwas/
-│   └── heartfail_pwas/
+│   └── hermes_hf_pwas/
 ├── Figure/
 └── Github/
     └── Analysis_code/
@@ -68,11 +71,12 @@ The active workflows currently use these external data/workspace directories:
 - `Results/3pi_workspace`
 - `Heart/GTEx_Pi_Estimate`
 - `Heart/HERMES`
+- `Heart/HERMES_HF`
 - `Heart/Data`
 - `New generated files/codes`
 - `Results/heart_protein_weights`
 - `Results/hermes_pwas`
-- `Results/heartfail_pwas`
+- `Results/hermes_hf_pwas`
 
 If you run the scripts on a different machine, set `PAPER_SMIXCAN_DIR` to the
 local path of the external `Paper_SMiXcan` project directory before running the
@@ -114,9 +118,10 @@ Many scripts use `library(SMiXcan)`, so the package should be installed before r
 The active association function is the package-level `SMiXcan_assoc_test_K()`.
 Do not source local copies of `R/S-MiXcan_K.R` from workflow scripts.
 
-## Two-Cell-Type Pipeline
+## Breast Cancer Risk / BCAC Two-Cell-Type Pipeline
 
-The two-cell analysis lives in [2CellTypes](./2CellTypes).
+The breast cancer risk two-cell analysis lives in
+[Breast_BCAC_2CellTypes](./Breast_BCAC_2CellTypes).
 
 ### Overview
 
@@ -132,11 +137,11 @@ This workflow:
 
 ### Script Order
 
-1. [2CellTypes/1_pi_estimate_2.R](./2CellTypes/1_pi_estimate_2.R)
+1. [Breast_BCAC_2CellTypes/1_pi_estimate_2.R](./Breast_BCAC_2CellTypes/1_pi_estimate_2.R)
 
 This file is only a note. The two-cell proportions used here are derived in the training workflow from the 3-cell BayesDeBulk estimates, so there is no standalone 2-cell `pi` estimation script to run.
 
-2. [2CellTypes/2_train_model_2.R](./2CellTypes/2_train_model_2.R)
+2. [Breast_BCAC_2CellTypes/2_train_model_2.R](./Breast_BCAC_2CellTypes/2_train_model_2.R)
 
 Purpose:
 - loads GTEx breast expression, covariates, genotype, and PredictDB elastic-net SNP sets
@@ -147,7 +152,7 @@ Purpose:
 Main output:
 - `Paper_SMiXcan/Results/weights_miXcan_full_pi2.csv`
 
-3. [2CellTypes/3_DRIVE_Analysis_gtex.R](./2CellTypes/3_DRIVE_Analysis_gtex.R)
+3. [Breast_BCAC_2CellTypes/3_DRIVE_Analysis_gtex.R](./Breast_BCAC_2CellTypes/3_DRIVE_Analysis_gtex.R)
 
 Purpose:
 - loads the trained two-cell weights
@@ -162,7 +167,7 @@ Notes:
 - this script contains a small local helper called `smixcan_assoc_for_drive()`
 - that helper is only for this comparison script and is not part of the package API
 
-4. [2CellTypes/4_BCAC_prepare_data.R](./2CellTypes/4_BCAC_prepare_data.R)
+4. [Breast_BCAC_2CellTypes/4_BCAC_prepare_data.R](./Breast_BCAC_2CellTypes/4_BCAC_prepare_data.R)
 
 Purpose:
 - reads chromosome-wise BCAC GWAS summary statistics
@@ -179,7 +184,7 @@ Main outputs:
 - `Paper_SMiXcan/Results/2pi_workspace/bcac2020_filtered_id/`
 - `Paper_SMiXcan/Results/2pi_workspace/bcac2020_input/`
 
-5. [2CellTypes/5_1000Genome_keep_eur_plink.sh](./2CellTypes/5_1000Genome_keep_eur_plink.sh)
+5. [Breast_BCAC_2CellTypes/5_1000Genome_keep_eur_plink.sh](./Breast_BCAC_2CellTypes/5_1000Genome_keep_eur_plink.sh)
 
 Purpose:
 - uses the SNP lists from step 4
@@ -191,7 +196,7 @@ Main output location:
 This step requires PLINK and the 1000 Genomes reference files under
 `PAPER_SMIXCAN_DIR`.
 
-6. [2CellTypes/6_BCAC2020_run_analysis_2.R](./2CellTypes/6_BCAC2020_run_analysis_2.R)
+6. [Breast_BCAC_2CellTypes/6_BCAC2020_run_analysis_2.R](./Breast_BCAC_2CellTypes/6_BCAC2020_run_analysis_2.R)
 
 Purpose:
 - loads the chromosome-wise merged BCAC inputs
@@ -202,7 +207,7 @@ Purpose:
 Main output location:
 - `Paper_SMiXcan/Results/bcac2020_result/`
 
-7. [2CellTypes/7_run_Primo.R](./2CellTypes/7_run_Primo.R)
+7. [Breast_BCAC_2CellTypes/7_run_Primo.R](./Breast_BCAC_2CellTypes/7_run_Primo.R)
 
 Purpose:
 - reads `bcac2020_result_pi2.csv`
@@ -214,7 +219,7 @@ Main outputs in `Paper_SMiXcan/Results/SMiXcanK_results`:
 - `bcac2020_result_pi2_annotated.csv`
 - `tableS2.csv`
 
-8. [2CellTypes/8_plot.R](./2CellTypes/8_plot.R)
+8. [Breast_BCAC_2CellTypes/8_plot.R](./Breast_BCAC_2CellTypes/8_plot.R)
 
 Purpose:
 - uses the annotated two-cell BCAC output and the DRIVE comparison output
@@ -225,9 +230,10 @@ Main outputs in `Paper_SMiXcan/Figure`:
 - `Figure2_BC.pdf`
 - `Final_Figure_ABC.pdf`
 
-## Three-Cell-Type Pipeline
+## Breast Cancer Risk / BCAC Three-Cell-Type Pipeline
 
-The three-cell analysis lives in [3CellTypes](./3CellTypes).
+The breast cancer risk three-cell analysis lives in
+[Breast_BCAC_3CellTypes](./Breast_BCAC_3CellTypes).
 
 ### Overview
 
@@ -235,15 +241,16 @@ This workflow:
 
 1. estimates three-cell-type proportions in GTEx breast tissue
 2. trains a three-cell MiXcan model
-3. prepares BCAC chromosome-wise inputs
-4. builds European-only LD reference subsets
-5. runs the three-cell S-MiXcan scan
-6. annotates the results and runs Primo
-7. generates the supplementary figures
+3. validates three-cell MiXcan and S-MiXcan agreement in DRIVE
+4. prepares BCAC chromosome-wise inputs
+5. builds European-only LD reference subsets
+6. runs the three-cell S-MiXcan scan
+7. annotates the results and runs Primo
+8. generates the supplementary figures
 
 ### Script Order
 
-1. [3CellTypes/1_pi_estimation_gtex_3.R](./3CellTypes/1_pi_estimation_gtex_3.R)
+1. [Breast_BCAC_3CellTypes/1_pi_estimation_gtex_3.R](./Breast_BCAC_3CellTypes/1_pi_estimation_gtex_3.R)
 
 Purpose:
 - estimates cell fractions with `pi_estimation_K()`
@@ -252,7 +259,7 @@ Purpose:
 Main output:
 - `Paper_SMiXcan/Results/BayesDeBulk_pi_3ct_GTEx.tsv`
 
-2. [3CellTypes/2_train_model_3.R](./3CellTypes/2_train_model_3.R)
+2. [Breast_BCAC_3CellTypes/2_train_model_3.R](./Breast_BCAC_3CellTypes/2_train_model_3.R)
 
 Purpose:
 - loads GTEx expression, covariates, genotype, and PredictDB elastic-net SNP sets
@@ -262,7 +269,17 @@ Purpose:
 Main output:
 - `Paper_SMiXcan/Results/weights_miXcan_full_pi3.csv`
 
-3. [3CellTypes/3_BCAC2020_prepare_data_3.R](./3CellTypes/3_BCAC2020_prepare_data_3.R)
+DRIVE validation: [Breast_BCAC_3CellTypes/3_DRIVE_Analysis_gtex_3.R](./Breast_BCAC_3CellTypes/3_DRIVE_Analysis_gtex_3.R)
+
+Purpose:
+- runs a single-SNP GWAS in the individual-level DRIVE chromosome 21 data
+- compares three-cell individual-level MiXcan with S-MiXcan
+- allele-aligns DRIVE dosages to the three-cell prediction weights
+
+Main output:
+- `Paper_SMiXcan/Results/drive_result_pi3.csv`
+
+3. [Breast_BCAC_3CellTypes/3_BCAC2020_prepare_data_3.R](./Breast_BCAC_3CellTypes/3_BCAC2020_prepare_data_3.R)
 
 Purpose:
 - reads chromosome-wise BCAC GWAS summary statistics
@@ -282,7 +299,7 @@ Note:
 - these archived Dropbox workspace folders contain the available 3-cell chromosome-specific merged inputs and SNP ID files
 - the original workspace folder keeps the name `baca2020_input/` in Dropbox because that is how it was named in the local run directory
 
-4. [3CellTypes/4_run_plink_eur_3.sh](./3CellTypes/4_run_plink_eur_3.sh)
+4. [Breast_BCAC_3CellTypes/4_run_plink_eur_3.sh](./Breast_BCAC_3CellTypes/4_run_plink_eur_3.sh)
 
 Purpose:
 - uses the SNP lists from step 3
@@ -291,7 +308,7 @@ Purpose:
 Main output locations:
 - `Paper_SMiXcan/Results/3pi_workspace/bcac2020_filtered_id/`
 
-5. [3CellTypes/5_BCAC2020_run_analysis_3.R](./3CellTypes/5_BCAC2020_run_analysis_3.R)
+5. [Breast_BCAC_3CellTypes/5_BCAC2020_run_analysis_3.R](./Breast_BCAC_3CellTypes/5_BCAC2020_run_analysis_3.R)
 
 Purpose:
 - loads the chromosome-wise merged BCAC inputs
@@ -302,7 +319,7 @@ Purpose:
 Main output locations:
 - `Paper_SMiXcan/Results/3pi_workspace/bcac2020_result/`
 
-6. [3CellTypes/6_BCACresult.R](./3CellTypes/6_BCACresult.R)
+6. [Breast_BCAC_3CellTypes/6_BCACresult.R](./Breast_BCAC_3CellTypes/6_BCACresult.R)
 
 Purpose:
 - reads the combined three-cell result table
@@ -314,7 +331,7 @@ Main outputs in `Paper_SMiXcan/Results/SMiXcanK_results`:
 - `bcac2020_result_pi3_annotated.csv`
 - `tableS3.csv`
 
-7. [3CellTypes/7_plotS1.R](./3CellTypes/7_plotS1.R)
+7. [Breast_BCAC_3CellTypes/7_plotS1.R](./Breast_BCAC_3CellTypes/7_plotS1.R)
 
 Purpose:
 - uses the annotated three-cell BCAC output and the DRIVE comparison output
@@ -338,7 +355,7 @@ The active workflow folders are:
 ```text
 Heart_Protein_Weights/
 HERMES/
-HEARTFAIL/
+HERMES_HF/
 ```
 
 ### Heart Protein Weight Training
@@ -390,32 +407,31 @@ HERMES_ASSOC_REG_MODE=fixed
 HERMES_ASSOC_REG_MODE=estimate
 ```
 
-### HEARTFAIL PWAS
+### HERMES HF PWAS
 
-See [HEARTFAIL/README.md](./HEARTFAIL/README.md).
+See [HERMES_HF/README.md](./HERMES_HF/README.md).
 
 Main scripts:
 
-1. [HEARTFAIL/1_liftover_heartfail_gwas.py](./HEARTFAIL/1_liftover_heartfail_gwas.py)
-2. [HEARTFAIL/2_HEARTFAIL_prepare_data_pwas.R](./HEARTFAIL/2_HEARTFAIL_prepare_data_pwas.R)
-3. [HEARTFAIL/3_1000Genome_keep_eur_plink_heartfail_pwas.sh](./HEARTFAIL/3_1000Genome_keep_eur_plink_heartfail_pwas.sh)
-4. [HEARTFAIL/4_HEARTFAIL_run_analysis_pwas.R](./HEARTFAIL/4_HEARTFAIL_run_analysis_pwas.R)
-5. [HEARTFAIL/5_run_Primo_heartfail_pwas.R](./HEARTFAIL/5_run_Primo_heartfail_pwas.R)
-6. [HEARTFAIL/6_plot_heartfail_pwas.R](./HEARTFAIL/6_plot_heartfail_pwas.R)
+1. [HERMES_HF/1_liftover_hermes_hf_gwas.py](./HERMES_HF/1_liftover_hermes_hf_gwas.py)
+2. [HERMES_HF/2_HERMES_HF_prepare_data_pwas.R](./HERMES_HF/2_HERMES_HF_prepare_data_pwas.R)
+3. [HERMES_HF/3_1000Genome_keep_eur_plink_hermes_hf_pwas.sh](./HERMES_HF/3_1000Genome_keep_eur_plink_hermes_hf_pwas.sh)
+4. [HERMES_HF/4_HERMES_HF_run_analysis_pwas.R](./HERMES_HF/4_HERMES_HF_run_analysis_pwas.R)
+5. [HERMES_HF/5_run_Primo_hermes_hf_pwas.R](./HERMES_HF/5_run_Primo_hermes_hf_pwas.R)
+6. [HERMES_HF/6_plot_hermes_hf_pwas.R](./HERMES_HF/6_plot_hermes_hf_pwas.R)
 
-HEARTFAIL case/control counts must be provided before step 4:
+HERMES HF default sample counts:
 
-```bash
-HEARTFAIL_N_CASES=<case_count> \
-HEARTFAIL_N_CONTROLS=<control_count> \
-Rscript Analysis_code/HEARTFAIL/4_HEARTFAIL_run_analysis_pwas.R
+```text
+cases    = 132,176
+controls = 1,553,537
 ```
 
 Step 4 supports:
 
 ```bash
-HEARTFAIL_ASSOC_REG_MODE=fixed
-HEARTFAIL_ASSOC_REG_MODE=estimate
+HERMES_HF_ASSOC_REG_MODE=fixed
+HERMES_HF_ASSOC_REG_MODE=estimate
 ```
 
 ## Starting a New Heart PWAS Analysis From Scratch
@@ -572,7 +588,7 @@ points to the correct per-chromosome files.
 ### Step 4. Prepare a GWAS for PWAS
 
 For a new GWAS, create or copy a workflow folder under `Analysis_code/`, using
-`HERMES/` or `HEARTFAIL/` as a template.
+`HERMES/` or `HERMES_HF/` as a template.
 
 You usually need these scripts:
 
@@ -648,10 +664,10 @@ Example for HERMES:
 Rscript Analysis_code/HERMES/2_HERMES_prepare_data_pwas.R
 ```
 
-Example for HEARTFAIL:
+Example for HERMES HF:
 
 ```bash
-Rscript Analysis_code/HEARTFAIL/2_HEARTFAIL_prepare_data_pwas.R
+Rscript Analysis_code/HERMES_HF/2_HERMES_HF_prepare_data_pwas.R
 ```
 
 Things to check in the prepare script:
@@ -680,7 +696,7 @@ bash Analysis_code/HERMES/3_1000Genome_keep_eur_plink_hermes_pwas.sh
 or:
 
 ```bash
-bash Analysis_code/HEARTFAIL/3_1000Genome_keep_eur_plink_heartfail_pwas.sh
+bash Analysis_code/HERMES_HF/3_1000Genome_keep_eur_plink_hermes_hf_pwas.sh
 ```
 
 Things to check:
@@ -689,7 +705,7 @@ Things to check:
 - `DATA_DIR`, usually `Data/plink_snplist_by_gene`
 - `EUR_SAMPLES`, usually `Data/1000Genome/eur_ids.txt`
 - `PLINK2_BIN` / `PLINK_BIN`
-- `HERMES_WORKSPACE_DIR` or `HEARTFAIL_WORKSPACE_DIR`
+- `HERMES_WORKSPACE_DIR` or `HERMES_HF_WORKSPACE_DIR`
 
 This step writes `.bim` and `.raw` files used by step 4.
 
@@ -702,13 +718,11 @@ HERMES_ASSOC_REG_MODE=estimate \
 Rscript Analysis_code/HERMES/4_HERMES_run_analysis_pwas.R
 ```
 
-Example HEARTFAIL:
+Example HERMES HF:
 
 ```bash
-HEARTFAIL_N_CASES=1405 \
-HEARTFAIL_N_CONTROLS=359789 \
-HEARTFAIL_ASSOC_REG_MODE=estimate \
-Rscript Analysis_code/HEARTFAIL/4_HEARTFAIL_run_analysis_pwas.R
+HERMES_HF_ASSOC_REG_MODE=estimate \
+Rscript Analysis_code/HERMES_HF/4_HERMES_HF_run_analysis_pwas.R
 ```
 
 Association options:
@@ -730,7 +744,7 @@ For long runs, use the parallel runner:
 
 ```bash
 bash Analysis_code/HERMES/run_HERMES_step4_parallel.sh
-bash Analysis_code/HEARTFAIL/run_HEARTFAIL_step4_parallel.sh
+bash Analysis_code/HERMES_HF/run_HERMES_HF_step4_parallel.sh
 ```
 
 ### Step 8. Run PRIMO and plot
@@ -745,8 +759,8 @@ Rscript Analysis_code/HERMES/6_plot_hermes_pwas.R
 or:
 
 ```bash
-Rscript Analysis_code/HEARTFAIL/5_run_Primo_heartfail_pwas.R
-Rscript Analysis_code/HEARTFAIL/6_plot_heartfail_pwas.R
+Rscript Analysis_code/HERMES_HF/5_run_Primo_hermes_hf_pwas.R
+Rscript Analysis_code/HERMES_HF/6_plot_hermes_hf_pwas.R
 ```
 
 Final outputs are written under:
@@ -774,23 +788,23 @@ unless the project specifies otherwise.
 
 ## Typical Run Order for Reproducing the Main Results
 
-If you want the original breast paper outputs rather than every intermediate step, the practical run order is:
+If you want the original breast cancer risk / BCAC paper outputs rather than every intermediate step, the practical run order is:
 
 1. install the `SMiXcan` package from this repository
 2. make sure Dropbox `Data`, `Results`, and `Figure` folders exist
 3. make sure the external GTEx, BCAC, and 1000 Genomes resources are available under `PAPER_SMIXCAN_DIR`
-4. run `2CellTypes/2_train_model_2.R`
-5. run `2CellTypes/3_DRIVE_Analysis_gtex.R`
-6. run `2CellTypes/4_BCAC_prepare_data.R`
-7. run `2CellTypes/5_1000Genome_keep_eur_plink.sh`
-8. run `2CellTypes/6_BCAC2020_run_analysis_2.R`
-9. run `2CellTypes/7_run_Primo.R`
-10. run `2CellTypes/8_plot.R`
+4. run `Breast_BCAC_2CellTypes/2_train_model_2.R`
+5. run `Breast_BCAC_2CellTypes/3_DRIVE_Analysis_gtex.R`
+6. run `Breast_BCAC_2CellTypes/4_BCAC_prepare_data.R`
+7. run `Breast_BCAC_2CellTypes/5_1000Genome_keep_eur_plink.sh`
+8. run `Breast_BCAC_2CellTypes/6_BCAC2020_run_analysis_2.R`
+9. run `Breast_BCAC_2CellTypes/7_run_Primo.R`
+10. run `Breast_BCAC_2CellTypes/8_plot.R`
 
-For the three-cell supplementary analysis, run the corresponding `3CellTypes` scripts in numeric order.
+For the three-cell supplementary analysis, run the corresponding `Breast_BCAC_3CellTypes` scripts in numeric order.
 
 For the heart PWAS analyses, train or confirm the heart protein weights first,
-then run either the `HERMES` or `HEARTFAIL` folder in numeric order.
+then run either the `HERMES` or `HERMES_HF` folder in numeric order.
 
 ## Important Path Caveats
 
@@ -807,7 +821,7 @@ If your machine uses a different external project directory, set
 ## Notes for New Users
 
 - The scripts are intended to be run one file at a time, not as a single automated pipeline
-- Most intermediate files are chromosome-specific and are written into the `Results/2pi_workspace`, `Results/3pi_workspace`, HERMES, or HEARTFAIL workspace directories
+- Most intermediate files are chromosome-specific and are written into the `Results/2pi_workspace`, `Results/3pi_workspace`, HERMES, or HERMES HF workspace directories
 - Final cleaned outputs are written into Dropbox `Results`
 - Final figures are written into Dropbox `Figure`
 - The file [Document for downloading reference genome.docx](./Document%20for%20downloading%20reference%20genome.docx) contains the download/setup notes for the external reference resources used in this project, including the GTEx-related local data setup and the reference genome resources used by the PLINK steps

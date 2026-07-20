@@ -28,6 +28,9 @@
 #'   10-fold CV with a random split is used.
 #' @param alpha Elastic-net mixing parameter passed to \code{glmnet}.
 #'   Default: \code{0.5}.
+#' @param lambda_choice Character string specifying which cross-validated
+#'   glmnet lambda to use. Use \code{"1se"} for \code{lambda.1se} or
+#'   \code{"min"} for \code{lambda.min}. Default: \code{"1se"}.
 #'
 #' @return A list with components:
 #' \describe{
@@ -42,6 +45,12 @@
 #'   \item{glmnet.cell}{Fitted glmnet object for the K-cell model.}
 #'   \item{glmnet.tissue}{Fitted glmnet object for the tissue-level model
 #'     (ignoring cell-type composition).}
+#'   \item{lambda_cell}{Selected lambda for the K-cell model.}
+#'   \item{lambda_tissue}{Selected lambda for the tissue-level model.}
+#'   \item{cv_mse_cell}{Cross-validated MSE at \code{lambda_cell}.}
+#'   \item{cv_mse_tissue}{Cross-validated MSE at \code{lambda_tissue}.}
+#'   \item{cv_r2_cell}{Cross-validated R-squared at \code{lambda_cell}.}
+#'   \item{cv_r2_tissue}{Cross-validated R-squared at \code{lambda_tissue}.}
 #'   \item{yName}{Returned gene annotation.}
 #'   \item{xNameMatrix}{Returned SNP annotation.}
 #' }
@@ -75,7 +84,31 @@
 #' @export
 MiXcan_train_K <- function(y, x, cov = NULL, pi_k,
                                      xNameMatrix = NULL, yName = NULL,
-                                     foldid = NULL, alpha = 0.5) {
+                                     foldid = NULL, alpha = 0.5,
+                                     lambda_choice = c("1se", "min")) {
+
+  lambda_choice <- match.arg(lambda_choice)
+
+  pick_lambda <- function(cv_fit) {
+    if (lambda_choice == "min") {
+      cv_fit$lambda.min
+    } else {
+      cv_fit$lambda.1se
+    }
+  }
+
+  cv_mse_at_lambda <- function(cv_fit, lambda_value) {
+    idx <- which.min(abs(log(cv_fit$lambda) - log(lambda_value)))
+    cv_fit$cvm[idx]
+  }
+
+  cv_r2_at_lambda <- function(cv_fit, lambda_value, y_centered) {
+    y_var <- mean(as.numeric(y_centered)^2)
+    if (!is.finite(y_var) || y_var <= 0) {
+      return(NA_real_)
+    }
+    1 - cv_mse_at_lambda(cv_fit, lambda_value) / y_var
+  }
 
   ## ---- Input checks and setup ----
   y    <- as.matrix(y)
@@ -126,10 +159,11 @@ MiXcan_train_K <- function(y, x, cov = NULL, pi_k,
     foldid   = foldid,
     alpha    = alpha
   )
+  lambda_tissue <- pick_lambda(ft00)
   ft0 <- glmnet::glmnet(
     x = xcov, y = y,
     family   = "gaussian",
-    lambda   = ft00$lambda.1se,
+    lambda   = lambda_tissue,
     alpha    = alpha
   )
   est.tissue <- c(ft0$a0, as.numeric(ft0$beta))  # intercept + coefficients
@@ -173,21 +207,22 @@ MiXcan_train_K <- function(y, x, cov = NULL, pi_k,
     alpha          = alpha,
     penalty.factor = penalty.factor
   )
+  lambda_cell <- pick_lambda(ft11)
   ft <- glmnet::glmnet(
     x = XX, y = y,
     family         = "gaussian",
-    lambda         = ft11$lambda.1se,
+    lambda         = lambda_cell,
     alpha          = alpha,
     penalty.factor = penalty.factor
   )
 
-  est <- c(ft$a0, as.numeric(ft$beta))  # [intercept, all coefficients]
+  coef_no_intercept <- as.numeric(ft$beta)
 
   ## ---- Decode intercepts and SNP weights for each cell type ----
 
   a0 <- ft$a0   # scalar intercept
 
-  # Indices in est, excluding the global intercept a0:
+  # Indices in coef_no_intercept:
   # 1..n_c         : alpha_m (effects of c_mat on intercept)
   # (n_c+1)..(n_c+p) : shared SNP effects (bar{b})
   # next n_Z        : contrast SNP effects stacked
@@ -196,13 +231,13 @@ MiXcan_train_K <- function(y, x, cov = NULL, pi_k,
   idx_c    <- 1:n_c
   idx_barb <- (n_c + 1):(n_c + p)
   idx_Z    <- (n_c + p + 1):(n_c + p + n_Z)
-  idx_cov  <- if (pcov > 0L) (length(est) - pcov + 1):length(est) else integer(0)
+  idx_cov  <- if (pcov > 0L) (n_c + p + n_Z + 1):(n_c + p + n_Z + pcov) else integer(0)
 
-  alpha_vec <- est[idx_c]            # length K-1
-  b_bar     <- est[idx_barb]         # length P
+  alpha_vec <- coef_no_intercept[idx_c]    # length K-1
+  b_bar     <- coef_no_intercept[idx_barb] # length P
 
   # contrast SNP effects d_m: P x (K-1)
-  d_mat <- matrix(est[idx_Z], nrow = p, ncol = K - 1L, byrow = FALSE)
+  d_mat <- matrix(coef_no_intercept[idx_Z], nrow = p, ncol = K - 1L, byrow = FALSE)
 
   # Reconstruct cell-type-specific intercepts.
   # a_k = a0 + C[k,] %*% alpha_vec
@@ -258,7 +293,7 @@ MiXcan_train_K <- function(y, x, cov = NULL, pi_k,
     beta_cell_mat[1 + (1:p), k] <- B_mat[, k] # SNPs
     if (pcov > 0L) {
       beta_cell_mat[1 + p + (1:pcov), k] <-
-        if (length(idx_cov) > 0L) est[idx_cov] else 0
+        if (length(idx_cov) > 0L) coef_no_intercept[idx_cov] else 0
     }
   }
 
@@ -275,6 +310,13 @@ MiXcan_train_K <- function(y, x, cov = NULL, pi_k,
     W                = B_mat,
     glmnet.cell      = ft,
     glmnet.tissue    = ft0,
+    lambda_choice    = lambda_choice,
+    lambda_cell      = lambda_cell,
+    lambda_tissue    = lambda_tissue,
+    cv_mse_cell      = cv_mse_at_lambda(ft11, lambda_cell),
+    cv_mse_tissue    = cv_mse_at_lambda(ft00, lambda_tissue),
+    cv_r2_cell       = cv_r2_at_lambda(ft11, lambda_cell, y),
+    cv_r2_tissue     = cv_r2_at_lambda(ft00, lambda_tissue, y),
     yName            = yName,
     xNameMatrix      = xNameMatrix
   )
