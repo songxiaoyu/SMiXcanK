@@ -4,7 +4,7 @@
 #   A. Valid p-value rate under the null, used as a proxy for how often each
 #      method returns a usable prediction/association result.
 #   B. Type I error from the 2000-replicate null simulation.
-#   C. Power for b1 = 0.5, b2 = 1 across four eta settings.
+#   C. Power for b1 = 1, b2 = 1 across four eta settings.
 #
 # The power panels use the all-replicate denominator so failed/NA models are
 # counted as not detected.
@@ -17,19 +17,19 @@ suppressPackageStartupMessages({
 
 paper_dir <- Sys.getenv(
   "PAPER_SMIXCAN_DIR",
-  unset = "/Users/zhusinan/Library/CloudStorage/Dropbox/Paper_SMiXcan"
+  unset = '/Users/songxiaoyu152/NUS Dropbox/Xiaoyu Song/Density_Song/Paper_SMiXcan'
 )
 simulation_dir <- file.path(paper_dir, "Results", "simulation")
 
-type1_dir <- file.path(simulation_dir, "type1_reg_scale_0p05_b0_1_b1_0p5_b2_1_2000rep")
-power_0p5_1_dir <- file.path(simulation_dir, "power_b0_1_b1_0p5_b2_1_eta4_reg0p05_200rep")
+type1_dir <- file.path(simulation_dir, "type1_b0_1_b1_1_b2_1_heter_2000rep")
+power_0p5_1_dir <- file.path(simulation_dir, "power_b0_1_b1_1_b2_1_heter_200rep")
 out_dir <- file.path(simulation_dir, "final_bar_summary_heterogeneous")
 out_summary <- file.path(out_dir, "heterogeneous_snp_exp_bar_summary_values.csv")
 
 type1_file <- file.path(type1_dir, "type1_regularization_scale_summary.csv")
 power_file <- file.path(power_0p5_1_dir, "power_fixed_setting_summary.csv")
 
-method_levels_raw <- c("PrediXcan", "MiXcan_sep", "SMiXcan_sep")
+method_levels_raw <- c("PrediXcan", "MiXcan_join", "SMiXcan_join")
 method_labels <- c("PrediXcan", "MiXcan", "S-MiXcan")
 method_colors <- c(
   "MiXcan" = "#F06A63",
@@ -198,6 +198,8 @@ draw_combined <- function() {
   print(plot_c, vp = grid::viewport(layout.pos.row = 3, layout.pos.col = 1))
   grid::upViewport()
 }
+
+draw_combined
 
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 out_pdf <- file.path(out_dir, "heterogeneous_snp_exp_bar_summary.pdf")

@@ -42,7 +42,7 @@ devtools::install_github("yaowuliu/ACAT")
 # In terminal, Install:
 #sudo xcode-select --install
 #open https://mac.r-project.org/tools/gfortran-14.2-universal.pkg
-
+# install gfortran
 devtools::install_github("kjgleason/Primo")
 ```
 

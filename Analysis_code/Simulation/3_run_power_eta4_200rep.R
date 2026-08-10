@@ -2,7 +2,7 @@
 # expression-disease alternatives.
 #
 # Fixed setting:
-#   b0 = 1, nonzero b1 = 0.5, nonzero b2 = 1
+#   b0 = 1, nonzero b1 = 1, nonzero b2 = 1
 #   n_train = 300, n_test = 3000, heter xy
 #
 # Four power scenarios:
@@ -12,11 +12,14 @@
 #   eta1 = -0.2, eta2 = 0.2
 #
 # Outputs:
-#   Results/simulation/power_b0_1_b1_0p5_b2_1_eta4_reg0p05_200rep/
+#   Results/simulation/power_b0_1_b1_1_b2_1_eta4_heter_200rep/
 #     power_fixed_setting_full_results.csv
 #     power_fixed_setting_summary.csv
 #     power_fixed_setting_bar_sep_predixcan.{pdf,png}
 
+
+# Load functions and set up path ----------
+rm(list=ls())
 suppressPackageStartupMessages({
   library(data.table)
   library(doRNG)
@@ -39,13 +42,12 @@ get_script_dir <- function() {
 }
 
 script_dir <- get_script_dir()
-source(file.path(script_dir, "0_hap_generation.R"))
-source(file.path(script_dir, "1_data_generation_binary.R"))
-source(file.path(script_dir, "2_run_sim.R"))
+source(file.path(script_dir, "1_data_generation_function.R"))
+source(file.path(script_dir, "2_simu_analysis_function.R"))
 
 paper_dir <- Sys.getenv(
   "PAPER_SMIXCAN_DIR",
-  unset = "/Users/zhusinan/Library/CloudStorage/Dropbox/Paper_SMiXcan"
+  unset = '/Users/songxiaoyu152/NUS Dropbox/Xiaoyu Song/Density_Song/Paper_SMiXcan'
 )
 x_pool_path <- Sys.getenv(
   "SMIXCAN_SIM_X_POOL",
@@ -55,14 +57,15 @@ X_pool_filtered <- data.table::fread(x_pool_path, data.table = FALSE)
 
 workflow_name <- Sys.getenv(
   "SMIXCAN_POWER_FIXED_WORKFLOW_NAME",
-  unset = "power_b0_1_b1_0p5_b2_1_eta4_reg0p05_200rep"
+  unset = "power_b0_1_b1_1_b2_1_eta4_heter_200rep"
 )
 workflow_dir <- file.path(paper_dir, "Results", "simulation", workflow_name)
 dir.create(workflow_dir, recursive = TRUE, showWarnings = FALSE)
 
-B <- as.integer(Sys.getenv("SMIXCAN_POWER_FIXED_BATCH_SIZE", unset = "100"))
-ITR <- as.integer(Sys.getenv("SMIXCAN_POWER_FIXED_ITERATIONS", unset = "2"))
-workers <- as.integer(Sys.getenv("SMIXCAN_POWER_FIXED_WORKERS", unset = "4"))
+# set up parameters ----------
+B <- as.integer(Sys.getenv("SMIXCAN_POWER_FIXED_BATCH_SIZE", unset = "20"))
+ITR <- as.integer(Sys.getenv("SMIXCAN_POWER_FIXED_ITERATIONS", unset = "10"))
+workers <- as.integer(Sys.getenv("SMIXCAN_POWER_FIXED_WORKERS", unset = "10"))
 n_train <- as.integer(Sys.getenv("SMIXCAN_POWER_FIXED_N_TRAIN", unset = "300"))
 n_test <- as.integer(Sys.getenv("SMIXCAN_POWER_FIXED_N_TEST", unset = "3000"))
 nfolds <- as.integer(Sys.getenv("SMIXCAN_POWER_FIXED_NFOLDS", unset = "10"))
@@ -70,7 +73,7 @@ alpha_level <- as.numeric(Sys.getenv("SMIXCAN_POWER_FIXED_ALPHA_LEVEL", unset = 
 reg_scale <- as.numeric(Sys.getenv("SMIXCAN_POWER_FIXED_REG_SCALE", unset = "0.05"))
 
 b0 <- as.numeric(Sys.getenv("SMIXCAN_POWER_FIXED_B0", unset = "1"))
-b1 <- as.numeric(Sys.getenv("SMIXCAN_POWER_FIXED_B1", unset = "0.5"))
+b1 <- as.numeric(Sys.getenv("SMIXCAN_POWER_FIXED_B1", unset = "1"))
 b2 <- as.numeric(Sys.getenv("SMIXCAN_POWER_FIXED_B2", unset = "1"))
 group <- Sys.getenv("SMIXCAN_POWER_FIXED_GROUP", unset = "heter xy")
 snp_start <- as.integer(Sys.getenv("SMIXCAN_POWER_FIXED_SNP_START_COL", unset = "2"))
@@ -97,6 +100,8 @@ result_columns <- c(
   "m_mode", "s_reg_scale", "s_reg_condition", "s_mode"
 )
 
+
+# run analysis and save results  ----------
 all_results <- list()
 
 for (scenario_index in seq_len(nrow(scenarios))) {
@@ -107,6 +112,7 @@ for (scenario_index in seq_len(nrow(scenarios))) {
 
   for (i in seq_len(ITR)) {
     message("  Batch ", i, "/", ITR)
+    # generate data
     data_batch <- DataGen_newhap_binom(
       mc = B,
       n.train = n_train,
@@ -116,14 +122,15 @@ for (scenario_index in seq_len(nrow(scenarios))) {
       nonzero_beta1 = b1,
       nonzero_beta2 = b2,
       gammas = c(scen$eta1, scen$eta2),
-      var1 = 1,
-      var2 = 1,
+      var1 = 0.25,
+      var2 = 0.25,
       seed = 1000L * scenario_index + i,
       group = group,
       X_pool = X_pool_filtered,
       snp_region = snp_region
     )
 
+    # run analysis
     result <- run_simulation(
       data_batch,
       result,
@@ -155,6 +162,8 @@ full_results$reg_scale <- reg_scale
 
 full_file <- file.path(workflow_dir, "power_fixed_setting_full_results.csv")
 data.table::fwrite(full_results, full_file)
+
+# formatting results -----------
 
 p_cols <- c(
   "MiXcan" = "p_m_sep",
@@ -198,6 +207,9 @@ summary_table[, `:=`(
 summary_file <- file.path(workflow_dir, "power_fixed_setting_summary.csv")
 data.table::fwrite(summary_table, summary_file)
 
+# plotting -----------
+
+
 power_metric <- Sys.getenv("SMIXCAN_POWER_FIXED_PLOT_METRIC", unset = "power_all_reps")
 if (!power_metric %in% c("power_all_reps", "power_valid_p")) {
   stop("SMIXCAN_POWER_FIXED_PLOT_METRIC must be 'power_all_reps' or 'power_valid_p'.")
@@ -238,6 +250,10 @@ bar_plot <- ggplot(plot_data, aes(x = method, y = power_to_plot, fill = method))
       ifelse(power_metric == "power_all_reps", "all-replicate denominator", "valid p-value denominator")
     )
   )
+
+
+bar_plot
+
 
 plot_pdf <- file.path(workflow_dir, "power_fixed_setting_bar_sep_predixcan.pdf")
 plot_png <- file.path(workflow_dir, "power_fixed_setting_bar_sep_predixcan.png")

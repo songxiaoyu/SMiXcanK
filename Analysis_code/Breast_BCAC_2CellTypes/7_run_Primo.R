@@ -1,11 +1,9 @@
 library(data.table)
 library(dplyr)
 library(SMiXcan)
-paper_dir <- Sys.getenv(
-  "PAPER_SMIXCAN_DIR",
-  unset = "/Users/zhusinan/Library/CloudStorage/Dropbox/Paper_SMiXcan"
-)
-results_dir <- file.path(paper_dir, "Results", "2pi_workspace", "bcac2020_result")
+paper_dir <- Sys.getenv("PAPER_SMIXCAN_DIR",unset = "/Users/songxiaoyu152/NUS Dropbox/Xiaoyu Song/Density_Song/Paper_PWAS")
+
+results_dir <- file.path(paper_dir, "Results",  "bcac2020_result")
 data_dir <- file.path(paper_dir, "Data")
 #---Input----
 combined_path2 <- file.path(results_dir, "bcac2020_result_pi2.csv")
@@ -46,7 +44,6 @@ primo2 <- infer_celltype_patterns(
   merged = combined2,
   pvals_names = c("p_1", "p_2"),
   p_join_name = "p_join",
-  type_col = "type",
   gene_id_col = "gene_name"
 )
 
@@ -77,7 +74,6 @@ write.csv(out2, file.path(results_dir, "bcac2020_result_pi2_annotated.csv"), row
 # Write table S1
 out2_rename <- out2 %>%
   dplyr::rename(
-    model       = type,
     Z_epi       = Z_1,
     p_epi       = p_1,
     Z_stromal   = Z_2,
@@ -98,4 +94,4 @@ out2_rename <- out2 %>%
 
 
 head(out2_rename)
-write.csv(out2_rename, file.path(results_dir, "tableS2.csv"), row.names = FALSE)
+write.csv(out2_rename, file.path(results_dir, "tableS1.csv"), row.names = FALSE)

@@ -15,10 +15,7 @@ library(tidyr)
 library(Primo)
 library(ggforce)
 
-paper_dir <- Sys.getenv(
-  "PAPER_SMIXCAN_DIR",
-  unset = "/Users/zhusinan/Library/CloudStorage/Dropbox/Paper_SMiXcan"
-)
+paper_dir <- Sys.getenv("PAPER_SMIXCAN_DIR",unset = "/Users/songxiaoyu152/NUS Dropbox/Xiaoyu Song/Density_Song/Paper_PWAS")
 results_dir <- file.path(paper_dir, "Results")
 figure_dir <- file.path(paper_dir, "Figure")
 
@@ -28,7 +25,7 @@ base_font <- 12
 # 1. Load Data
 # ==============================================================================
 out2 <- read.csv(
-  file.path(results_dir, "2pi_workspace", "bcac2020_result", "bcac2020_result_pi2_annotated.csv"),
+  file.path(results_dir, "bcac2020_result", "bcac2020_result_pi2_annotated.csv"),
   colClasses = c(MAP_pattern_nonnull = "character")
 )
 

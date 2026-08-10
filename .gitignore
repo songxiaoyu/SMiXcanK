@@ -14,3 +14,4 @@ experiments/
 ..Rcheck/
 *.tar.gz
 MiXcan/
+.positai

@@ -1,20 +1,24 @@
 # Run one Type I error setting for MiXcan, S-MiXcan, and PrediXcan.
 #
 # Default setting:
-#   b0 = 1, nonzero b1 = 0.5, nonzero b2 = 1
+#   b0 = 1, nonzero b1 = 1, nonzero b2 =  1
 #   fixed regularization scale = 0.05
 #   eta1 = eta2 = 0, so disease has no expression effect.
 #
 # Outputs:
-#   Results/simulation/type1_b0_1_b1_0p5_b2_1/
+#   Results/simulation/type1_b0_1_b1_1_b2_1_heter_2000rep/
 #     type1_single_setting_full_results.csv
 #     type1_single_setting_summary.csv
 
+
+# Load functions and set up path ----------
+rm(list=ls())
 suppressPackageStartupMessages({
   library(data.table)
   library(doRNG)
   library(glmnet)
   library(SMiXcan)
+  library(doRNG)
 })
 
 get_script_dir <- function() {
@@ -31,13 +35,12 @@ get_script_dir <- function() {
 }
 
 script_dir <- get_script_dir()
-source(file.path(script_dir, "0_hap_generation.R"))
-source(file.path(script_dir, "1_data_generation_binary.R"))
-source(file.path(script_dir, "2_run_sim.R"))
+source(file.path(script_dir, "1_data_generation_function.R"))
+source(file.path(script_dir, "2_simu_analysis_function.R"))
 
 paper_dir <- Sys.getenv(
   "PAPER_SMIXCAN_DIR",
-  unset = "/Users/zhusinan/Library/CloudStorage/Dropbox/Paper_SMiXcan"
+  unset = '/Users/songxiaoyu152/NUS Dropbox/Xiaoyu Song/Density_Song/Paper_SMiXcan'
 )
 x_pool_path <- Sys.getenv(
   "SMIXCAN_SIM_X_POOL",
@@ -45,20 +48,21 @@ x_pool_path <- Sys.getenv(
 )
 X_pool_filtered <- data.table::fread(x_pool_path, data.table = FALSE)
 
-workflow_name <- Sys.getenv("SMIXCAN_TYPE1_WORKFLOW_NAME", unset = "type1_b0_1_b1_0p5_b2_1")
+workflow_name <- Sys.getenv("SMIXCAN_TYPE1_WORKFLOW_NAME", unset = "type1_b0_1_b1_1_b2_1_heter_2000rep")
 workflow_dir <- file.path(paper_dir, "Results", "simulation", workflow_name)
 dir.create(workflow_dir, recursive = TRUE, showWarnings = FALSE)
 
-B <- as.integer(Sys.getenv("SMIXCAN_TYPE1_BATCH_SIZE", unset = "100"))
-ITR <- as.integer(Sys.getenv("SMIXCAN_TYPE1_ITERATIONS", unset = "20"))
-workers <- as.integer(Sys.getenv("SMIXCAN_TYPE1_WORKERS", unset = "1"))
+# set up parameters ----------
+B <- as.integer(Sys.getenv("SMIXCAN_TYPE1_BATCH_SIZE", unset = "200"))
+ITR <- as.integer(Sys.getenv("SMIXCAN_TYPE1_ITERATIONS", unset = "10"))
+workers <- as.integer(Sys.getenv("SMIXCAN_TYPE1_WORKERS", unset = "10"))
 n_train <- as.integer(Sys.getenv("SMIXCAN_TYPE1_N_TRAIN", unset = "300"))
 n_test <- as.integer(Sys.getenv("SMIXCAN_TYPE1_N_TEST", unset = "3000"))
 nfolds <- as.integer(Sys.getenv("SMIXCAN_TYPE1_NFOLDS", unset = "10"))
 alpha_level <- as.numeric(Sys.getenv("SMIXCAN_TYPE1_ALPHA_LEVEL", unset = "0.05"))
 
 b0 <- as.numeric(Sys.getenv("SMIXCAN_TYPE1_B0", unset = "1"))
-b1 <- as.numeric(Sys.getenv("SMIXCAN_TYPE1_B1", unset = "0.5"))
+b1 <- as.numeric(Sys.getenv("SMIXCAN_TYPE1_B1", unset = "1"))
 b2 <- as.numeric(Sys.getenv("SMIXCAN_TYPE1_B2", unset = "1"))
 group <- Sys.getenv("SMIXCAN_TYPE1_GROUP", unset = "heter xy")
 reg_scale <- as.numeric(Sys.getenv("SMIXCAN_TYPE1_REG_SCALE", unset = "0.05"))
@@ -71,9 +75,12 @@ result_columns <- c(
   "p_s_join_1", "p_s_join_2", "p_s_join",
   "p_m_join_1", "p_m_join_2", "p_m_join",
   "p_predixcan",
-  "m_mode", "s_reg_scale", "s_reg_condition", "s_mode"
+  "m_mode", "s_reg_scale", "s_reg_condition",
+  "s_mode"
 )
 
+
+# run analysis and save results  ----------
 result <- data.frame(matrix(NA, ncol = length(result_columns), nrow = ITR * B))
 colnames(result) <- result_columns
 
@@ -88,9 +95,9 @@ for (i in seq_len(ITR)) {
     nonzero_beta1 = b1,
     nonzero_beta2 = b2,
     gammas = c(0, 0),
-    var1 = 1,
-    var2 = 1,
-    seed = i + 1L,
+    var1 = 0.25,
+    var2 = 0.25,
+    seed = i*15947 + 146,
     group = group,
     X_pool = X_pool_filtered,
     snp_region = snp_region
@@ -118,8 +125,11 @@ result$group <- group
 result$reg_scale <- reg_scale
 result$scenario <- "Type I error | eta1 = 0, eta2 = 0"
 
-full_file <- file.path(workflow_dir, "type1_single_setting_full_results.csv")
+full_file <- file.path(workflow_dir, "heterogeneous_type1_2000rep_full_results.csv")
 data.table::fwrite(result, full_file)
+
+
+# formatting results -----------
 
 p_cols <- c(
   MiXcan_join = "p_m_join",

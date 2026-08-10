@@ -36,8 +36,7 @@ get_script_dir <- function() {
 }
 
 script_dir <- get_script_dir()
-source(file.path(script_dir, "0_hap_generation.R"))
-source(file.path(script_dir, "1_data_generation_binary.R"))
+source(file.path(script_dir, "1_data_generation_function.R"))
 source(file.path(script_dir, "2_run_sim.R"))
 
 paper_dir <- Sys.getenv(

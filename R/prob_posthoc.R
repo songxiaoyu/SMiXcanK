@@ -66,6 +66,7 @@ infer_celltype_patterns <- function(
     fdr_cutoff = 0.1,
     specific_label = "CellTypeSpecific",
     unspecific_label = "NonSpecific",
+    alt_props=NULL,
     ...
 ) {
   stopifnot(is.data.frame(merged))
@@ -99,14 +100,15 @@ infer_celltype_patterns <- function(
   sig_spec_idx <- intersect(sig_join_idx, which(merged[[type_col]] == specific_label))
   sig_uns_idx  <- intersect(sig_join_idx, which(merged[[type_col]] == unspecific_label))
 
-  ## 3) Choose alt_props for PRIMO
+  ## 3) Choose alt_props for Primo
   # Since marginal p-values are not thresholded directly here, use a simple
   # heuristic: the fraction of joint-significant genes, distributed across K
   # cell types.
-  sig_gene_percentage <- mean(merged[[fdr_join_name]] < fdr_cutoff, na.rm = TRUE)
-  alt_props <- sig_gene_percentage / K
-  alt_props <- min(max(alt_props, 1e-6), 1 - 1e-6)
-
+  if (is.null(alt_props)) {
+    sig_gene_percentage <- mean(merged[[fdr_join_name]] < fdr_cutoff, na.rm = TRUE)
+    alt_props <- sig_gene_percentage / K
+    alt_props <- min(max(alt_props, 1e-6), 1 - 1e-6)
+  }
   ## 4) Fit PRIMO for all CellTypeSpecific genes
   Q <- suppressWarnings(Primo::make_qmat(1:K))
   patterns <- apply(Q, 1, paste0, collapse = "")
@@ -119,8 +121,7 @@ infer_celltype_patterns <- function(
   if (length(idx_spec_all) > 0) {
     res <- Primo::Primo_pval(
       pvals = as.matrix(merged[idx_spec_all, pvals_names, drop = FALSE]),
-      alt_props = rep(alt_props, K),
-      ...
+      alt_props = rep(alt_props, K)
     )
     pp <- as.data.frame(res$post_prob)
     colnames(pp) <- post_colnames

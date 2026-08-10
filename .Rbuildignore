@@ -8,3 +8,5 @@
 ^Archive$
 ^archive$
 ^Rplots\.pdf$
+^\.positai$
+^\.claude$
